@@ -1,0 +1,15 @@
+<html>
+  <head>
+    <title>Processed Images</title>
+  </head>
+  <body>
+    <h1>Processed Images</h1>
+
+    {% for image_filename in processed_images %}
+    <img
+      src="{{ url_for('uploaded_file', filename=image_filename) }}"
+      alt="{{ image_filename }}"
+    />
+    {% endfor %}
+  </body>
+</html>
