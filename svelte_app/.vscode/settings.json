@@ -1,0 +1,3 @@
+{
+  "conventionalCommits.scopes": ["root route", "svelte_app"]
+}

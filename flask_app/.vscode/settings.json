@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["structlog", "werkzeug", "wtforms"]
+  "cSpell.words": ["structlog", "werkzeug", "wtforms"],
+  "conventionalCommits.scopes": ["flask_app"]
 }
