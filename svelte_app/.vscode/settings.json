@@ -1,3 +1,4 @@
 {
-  "conventionalCommits.scopes": ["root route", "svelte_app"]
+  "conventionalCommits.scopes": ["root route", "svelte_app"],
+  "cSpell.words": ["mobilenet"]
 }

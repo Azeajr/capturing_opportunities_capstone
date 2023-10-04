@@ -1,144 +1,132 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import * as tf from '@tensorflow/tfjs';
+	// import * as mobilenet from '@tensorflow-models/mobilenet';
 	import ImageGrid from './ImageGrid.svelte';
+	import type { ImageFile } from '$lib/types';
 
 	const MOBILE_NET_INPUT_WIDTH = 224;
 	const MOBILE_NET_INPUT_HEIGHT = 224;
-	let trainingFileList:
-		| {
-				file: File;
-				uuid: string;
-		  }[]
-		| null = null;
-	let collectionFileList: FileList | null = null;
-	let mobileNet: tf.GraphModel | null = null;
-	let model: tf.Sequential | null = null;
 
-	async function loadMobileNetFeatureModel() {
+	async function getFeatureExtractor() {
+		// const mobilenetModel = await mobilenet.load();
+		// const handler = tfn.io.fileSystem(MODEL_URL);
+		// const mobilenetModel = await tf.loadGraphModel(handler);
+
 		const URL =
 			'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v3_small_100_224/feature_vector/5/default/1';
-		mobileNet = await tf.loadGraphModel(URL, { fromTFHub: true });
-		console.log('MobileNet v3 loaded successfully!');
+		const mobilenetModel = await tf.loadGraphModel(URL, { fromTFHub: true });
 		// Warm up the model by passing zeros through it once.
-
 		tf.tidy(function () {
-			const answer = mobileNet?.predict(
+			let answer = mobilenetModel.predict(
 				tf.zeros([1, MOBILE_NET_INPUT_HEIGHT, MOBILE_NET_INPUT_WIDTH, 3])
-			) as tf.Tensor<tf.Rank>;
+			) as tf.Tensor;
 			console.log(answer.shape);
 		});
+		// const mobilenetModel = await tf.loadGraphModel(
+		// 	'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/4/default/1',
+		// 	{ fromTFHub: true }
+		// );
+
+		const featureExtractor = tf.model({
+			inputs: mobilenetModel.inputs,
+			outputs: mobilenetModel.layers[87].output // Adjust the layer index as per your needs
+		});
+		// const featureExtractor = tf.model({
+		// 	inputs: mobilenetModel.inputs.map((input) => input as tf.SymbolicTensor),
+		// 	outputs: mobilenetModel.outputs as tf.SymbolicTensor[]
+		// });
+
+		return featureExtractor;
 	}
 
-	function loadCustomModel() {
-		model = tf.sequential();
-		model.add(tf.layers.dense({ inputShape: [1024], units: 128, activation: 'relu' }));
-		model.add(tf.layers.dense({ units: 1, activation: 'softmax' }));
+	function getClassifier() {
+		const classifier = tf.sequential();
+		classifier.add(tf.layers.flatten({ inputShape: [7, 7, 256] }));
+		classifier.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
 
-		model.summary();
-
-		model.compile({
-			// Adam changes the learning rate over time which is useful.
-			optimizer: 'adam',
-			// Use the correct loss function. If 2 classes of data, must use binaryCrossentropy.
-			// Else categoricalCrossentropy is used if more than 2 classes.
-			// loss: NUMBER_OF_CHANNELS === 2 ? 'binaryCrossentropy' : 'categoricalCrossentropy',
+		classifier.compile({
+			optimizer: tf.train.adam(),
 			loss: 'binaryCrossentropy',
-			// As this is a classification problem you can record accuracy in the logs too!
 			metrics: ['accuracy']
 		});
+
+		return classifier;
 	}
 
-	async function handleTrainingFileChange(
-		fileList: {
-			file: File;
-			uuid: string;
-		}[]
+	async function trainModel(
+		featureExtractor: tf.LayersModel,
+		classifier: tf.Sequential,
+		trainingImageFiles: ImageFile[]
 	) {
-		if (!fileList) {
-			console.error('No training data selected.');
-			return;
-		}
+		console.log('trainingImageFiles', trainingImageFiles);
 
-		trainingFileList = fileList;
-	}
+		const trainingTensor = tf.stack(
+			trainingImageFiles.map(({ file, uuid }) => {
+				setTimeout(() => {
+					console.log('...waiting');
+				}, 5000);
 
-	async function handleCollectionFileChange(
-		fileList: {
-			file: File;
-			uuid: string;
-		}[]
-	) {
-		classifyCollectionImages(fileList);
+				const element = document.getElementById(uuid);
+				console.log('element', element);
+
+				const image = tf.browser.fromPixels(element as HTMLImageElement);
+				return tf.image.resizeBilinear(image, [224, 224]).div(255);
+			})
+		);
+
+		const trainingLabels = tf.ones([trainingImageFiles.length, 1]);
+
+		await classifier.fit(featureExtractor.predict(trainingTensor), trainingLabels, {
+			epochs: 10 // Adjust the number of epochs
+		});
+
+		return classifier;
 	}
 
 	async function classifyCollectionImages(
-		fileList: {
-			file: File;
-			uuid: string;
-		}[]
+		featureExtractor: tf.LayersModel,
+		classifier: tf.Sequential,
+		collectionImageFiles: ImageFile[]
 	) {
-		// Loop through and classify user's images using the pre-trained model
-		for (const { file, uuid } of fileList) {
-			console.log('Classifying image:', file);
-			const reader = new FileReader();
-			reader.readAsDataURL(file);
-			reader.onloadend = async () => {
-				const imageTensor = await preprocessImage(uuid);
+		const collectionImages = collectionImageFiles.map(({ file, uuid }) => {
+			const element = document.getElementById(uuid);
 
-				// Use your TensorFlow.js model for classification
-				const predictions = model?.predict(imageTensor);
+			const image = tf.browser.fromPixels(element as HTMLImageElement);
 
-				// Process and display the predictions as needed
-				displayPredictions(predictions);
-			};
-		}
+			return tf.image.resizeBilinear(image, [224, 224]).div(255);
+		});
+
+		const predictions = classifier.predict(
+			featureExtractor.predict(collectionImages)
+		) as tf.Tensor<tf.Rank>;
+		const threshold = 0.5;
+
+		const results = predictions.squeeze().arraySync() as number[];
+
+		console.log(
+			'Results:',
+			results.map((score) => score >= threshold)
+		);
+	}
+	let featureExtractor: tf.LayersModel;
+	let classifie: tf.Sequential;
+
+	onMount(async () => {
+		featureExtractor = await getFeatureExtractor();
+		classifie = getClassifier();
+	});
+
+	function handleTrainingFileChange(featureExtractor: tf.LayersModel, classifier: tf.Sequential) {
+		return async (fileList: ImageFile[]) =>
+			(classifie = await trainModel(featureExtractor, classifier, fileList));
 	}
 
-	function preprocessImage(imageData: string): tf.Tensor<tf.Rank> | tf.Tensor<tf.Rank>[] {
-		
-
-		if (!mobileNet) {
-			console.error('MobileNet model not loaded.');
-			return tf.tensor([]); // Return an empty tensor if MobileNet is not loaded
-		}
-
-		// Preprocess the image data and convert it to a TensorFlow tensor
-		const element = document.getElementById(imageData);
-		console.log('Image data:', imageData);
-		console.log('Element:', element);
-
-		if (!element) {
-			console.error('Image element not found.');
-			return tf.tensor([]); // Return an empty tensor if the image element is not found
-		}
-
-		const image = tf.browser.fromPixels(element as HTMLImageElement);
-
-		const normalizedImage = tf.cast(image, 'float32').div(tf.scalar(255));
-		const batchedImage = normalizedImage.reshape([
-			1,
-			MOBILE_NET_INPUT_HEIGHT,
-			MOBILE_NET_INPUT_WIDTH,
-			3
-		]);
-
-		// Pass the image through MobileNet to extract features
-		const features = mobileNet.predict(batchedImage) as tf.Tensor<tf.Rank> | tf.Tensor<tf.Rank>[];
-
-		return features;
+	function handleCollectionFileChange(featureExtractor: tf.LayersModel, classifier: tf.Sequential) {
+		return async (fileList: ImageFile[]) => {
+			await classifyCollectionImages(featureExtractor, classifier, fileList);
+		};
 	}
-
-	function displayPredictions(predictions: tf.Tensor | tf.Tensor<tf.Rank>[] | undefined): void {
-		// Process and display the predictions as needed
-		// You can update the UI to show the predicted classes or confidence scores
-		const p = predictions as tf.Tensor<tf.Rank>;
-		console.log('Predictions:', p);
-		console.log('Predictions shape:', p?.shape);
-		console.log('Predictions data:', p?.dataSync());
-	}
-
-	loadMobileNetFeatureModel();
-	loadCustomModel();
 </script>
 
 <svelte:head>
@@ -146,8 +134,18 @@
 </svelte:head>
 
 <div class="index">
-	<ImageGrid title="Training Images" handleFileListSubmit={handleTrainingFileChange} />
-	<ImageGrid title="Image Collection" handleFileListSubmit={handleCollectionFileChange} />
+	<!-- {#await getFeatureExtractor() then featureExtractor} -->
+	{(classifie = getClassifier())}
+
+	<ImageGrid
+		title="Training Images"
+		handleFileListSubmit={handleTrainingFileChange(featureExtractor, classifie)}
+	/>
+	<ImageGrid
+		title="Image Collection"
+		handleFileListSubmit={handleCollectionFileChange(featureExtractor, classifie)}
+	/>
+	<!-- {/await} -->
 
 	<!-- {#if fileList}
 		<ImageGrid title="Results" fileListParam={fileList} />

@@ -21,7 +21,7 @@
 		fileList = null;
 	}
 
-	function populateImageGrid(
+	async function populateImageGrid(
 		fileList: {
 			file: File;
 			uuid: any;
@@ -40,17 +40,29 @@
 			});
 		});
 
-		Promise.all(images).then((images) => {
-			imageGrid.innerHTML = '';
-			images.forEach(({ image, uuid }) => {
-				const img = document.createElement('img');
-				img.src = image as string;
-				img.id = uuid;
-				img.width = 224;
-				img.height = 224;
-				imageGrid.appendChild(img);
-			});
+		const resolvedImages = await Promise.all(images);
+
+		imageGrid.innerHTML = '';
+		resolvedImages.forEach(({ image, uuid }) => {
+			const img = document.createElement('img');
+			img.src = image as string;
+			img.id = uuid;
+			img.width = 224;
+			img.height = 224;
+			imageGrid.appendChild(img);
 		});
+
+		// await Promise.all(images).then((images) => {
+		// 	imageGrid.innerHTML = '';
+		// 	images.forEach(({ image, uuid }) => {
+		// 		const img = document.createElement('img');
+		// 		img.src = image as string;
+		// 		img.id = uuid;
+		// 		img.width = 224;
+		// 		img.height = 224;
+		// 		imageGrid.appendChild(img);
+		// 	});
+		// });
 	}
 
 	function handleFileChange(event: Event) {
@@ -61,9 +73,12 @@
 			const testList = Array.from(fileList).map((file) => {
 				return { file: file, uuid: uuidv4() };
 			});
-			populateImageGrid(testList);
-			console.log(fileList);
-			handleFileListSubmit(testList);
+			populateImageGrid(testList).then(() => {
+				console.log('testList', testList);
+				handleFileListSubmit(testList);
+			});
+			// console.log(testList);
+			// handleFileListSubmit(testList);
 		}
 	}
 </script>
