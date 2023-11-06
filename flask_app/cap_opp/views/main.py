@@ -2,10 +2,10 @@ from pathlib import Path
 
 import structlog
 from flask import (
-    Flask,
+    Blueprint,
+    current_app,
     redirect,
     render_template,
-    request,
     send_from_directory,
     url_for,
 )
@@ -15,33 +15,26 @@ from cap_opp.forms.image_forms import ImageForm
 
 log = structlog.get_logger()
 
-UPLOAD_FOLDER = Path("temp", "uploads")
-TRAINING_IMAGES_FOLDER = Path(UPLOAD_FOLDER, "training_images")
-IMAGE_COLLECTION_FOLDER = Path(UPLOAD_FOLDER, "image_collection")
-UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-TRAINING_IMAGES_FOLDER.mkdir(parents=True, exist_ok=True)
-IMAGE_COLLECTION_FOLDER.mkdir(parents=True, exist_ok=True)
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
-
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "mysecret"
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["TRAINING_IMAGES_FOLDER"] = TRAINING_IMAGES_FOLDER
-app.config["IMAGE_COLLECTION_FOLDER"] = IMAGE_COLLECTION_FOLDER
+main_bp = Blueprint("main", __name__, template_folder="templates")
 
 
-@app.route("/", methods=["GET", "POST"])
+@main_bp.route("/", methods=["GET", "POST"])
 def index():
+    log.info("index", root_path=current_app.root_path)
+    log.info(
+        "training images folder", folder=current_app.config["TRAINING_IMAGES_FOLDER"]
+    )
+    log.info("current_path", current_path=Path.cwd())
     training_images_form = ImageForm(csrf_enabled=False, label="Upload Training Images")
     image_collection_form = ImageForm(
         csrf_enabled=False, label="Upload Image Collection"
     )
 
     training_images = [
-        p.name for p in app.config["TRAINING_IMAGES_FOLDER"].glob("*.png")
+        p.name for p in current_app.config["TRAINING_IMAGES_FOLDER"].glob("*.png")
     ]
     image_collection = [
-        p.name for p in app.config["IMAGE_COLLECTION_FOLDER"].glob("*.png")
+        p.name for p in current_app.config["IMAGE_COLLECTION_FOLDER"].glob("*.png")
     ]
 
     processed_images = []
@@ -56,12 +49,7 @@ def index():
     )
 
 
-@app.route("/about")
-def about():
-    return render_template("about.html")
-
-
-@app.route("/upload/training_images", methods=["POST"])
+@main_bp.route("/upload/training_images", methods=["POST"])
 def upload_training_images():
     training_images_form = ImageForm(csrf_enabled=False, label="Upload Training Images")
     image_collection_form = ImageForm(
@@ -71,8 +59,11 @@ def upload_training_images():
     if training_images_form.validate_on_submit():
         for image in training_images_form.images.data:
             image_path = Path(
-                app.config["TRAINING_IMAGES_FOLDER"], secure_filename(image.filename)
+                current_app.config["TRAINING_IMAGES_FOLDER"],
+                secure_filename(image.filename),
             )
+            log.info("image_path", image_path=image_path)
+            image_path.parent.mkdir(parents=True, exist_ok=True)
             image.save(image_path)
             log.info("training image file uploaded", file_path=image_path)
         # training_images_form.images.data = []
@@ -84,10 +75,10 @@ def upload_training_images():
     #     training_images_form=training_images_form,
     #     image_collection_form=image_collection_form,
     # )
-    return redirect(url_for("index"))
+    return redirect(url_for("main.index"))
 
 
-@app.route("/upload/collection_images", methods=["POST"])
+@main_bp.route("/upload/collection_images", methods=["POST"])
 def upload_collection_images():
     training_images_form = ImageForm(csrf_enabled=False, label="Upload Training Images")
     image_collection_form = ImageForm(
@@ -97,7 +88,8 @@ def upload_collection_images():
     if image_collection_form.validate_on_submit():
         for image in image_collection_form.images.data:
             image_path = Path(
-                app.config["IMAGE_COLLECTION_FOLDER"], secure_filename(image.filename)
+                current_app.config["IMAGE_COLLECTION_FOLDER"],
+                secure_filename(image.filename),
             )
             image.save(image_path)
             log.info("image collection file uploaded", file_path=image_path)
@@ -110,26 +102,15 @@ def upload_collection_images():
     #     training_images_form=training_images_form,
     #     image_collection_form=image_collection_form,
     # )
-    return redirect(url_for("index"))
+    return redirect(url_for("main.index"))
 
 
-@app.route("/uploaded/<folder>/<filename>")
+@main_bp.route("/uploaded/<folder>/<filename>")
 def uploaded_file(folder, filename):
-    return send_from_directory(app.config[folder.upper()], filename)
-
-
-processed_images = ["image1.jpg", "image2.jpg"]  # Replace with your actual filenames
-
-
-@app.route("/image-grouping", methods=["GET"])
-def image_grouping():
-    # Process the uploaded images and store their filenames in 'processed_images'
-    processed_images = [p.name for p in UPLOAD_FOLDER.glob("*.png")]
-    # for image in processed_images:
-    #     log.info('processing image', image=image)
-
-    return render_template("processed_images.html", processed_images=processed_images)
-
-
-if __name__ == "__main__":
-    app.run()
+    log.info(
+        "uploaded file",
+        folder=folder,
+        filename=filename,
+        path=current_app.config[folder.upper()],
+    )
+    return send_from_directory(current_app.config[folder.upper()], filename)

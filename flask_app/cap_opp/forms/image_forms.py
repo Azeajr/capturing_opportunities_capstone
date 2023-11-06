@@ -1,8 +1,7 @@
+import structlog
 from flask_wtf import FlaskForm
 from wtforms import MultipleFileField, SubmitField
 from wtforms.validators import DataRequired
-
-import structlog
 
 log = structlog.get_logger()
 
@@ -10,6 +9,7 @@ log = structlog.get_logger()
 # class TrainingImagesForm(FlaskForm):
 #     images = MultipleFileField("Upload Training Images", validators=[DataRequired()])
 #     submit1 = SubmitField("Upload")
+
 
 # class ImageCollectionForm(FlaskForm):
 #     images = MultipleFileField("Upload Image Collection", validators=[DataRequired()])

@@ -10,6 +10,8 @@ python = "^3.11"
 flask = "^2.3.3"
 structlog = "^23.1.0"
 flask-wtf = "^1.1.1"
+pydantic = "^2.4.2"
+pydantic-settings = "^2.0.3"
 
 
 [tool.poetry.group.dev.dependencies]

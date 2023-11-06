@@ -3,7 +3,7 @@
 
 {% block content %}
 <body>
-  <form action="{{url_for('upload_training_images')}}" method="post" enctype="multipart/form-data">
+  <form action="{{url_for('main.upload_training_images')}}" method="post" enctype="multipart/form-data">
     {{ training_images_form.hidden_tag() }}
     <h1>{{ training_images_form.images.label }}</h1>
     {{ training_images_form.images() }}
@@ -14,13 +14,13 @@
 
     {% for image_filename in training_images %}
     <img
-      src="{{ url_for('uploaded_file', folder='training_images_folder', filename=image_filename) }}"
+      src="{{ url_for('main.uploaded_file', folder='training_images_folder', filename=image_filename) }}"
       alt="{{ image_filename }}"
     />
     {% endfor %}
   {% endif %}
 
-  <form action="{{url_for('upload_collection_images')}}" method="post" enctype="multipart/form-data">
+  <form action="{{url_for('main.upload_collection_images')}}" method="post" enctype="multipart/form-data">
     {{ image_collection_form.hidden_tag() }}
     <h1>{{ image_collection_form.images.label }}</h1>
     {{ image_collection_form.images() }}
@@ -30,7 +30,7 @@
     <h1>Image Collection</h1>
     {% for image_filename in image_collection %}
     <img
-      src="{{ url_for('uploaded_file', folder='image_collection_folder', filename=image_filename) }}"
+      src="{{ url_for('main.uploaded_file', folder='image_collection_folder', filename=image_filename) }}"
       alt="{{ image_filename }}"
     />
     {% endfor %}
