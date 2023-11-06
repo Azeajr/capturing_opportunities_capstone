@@ -30,7 +30,6 @@ def index():
     training_images = [
         p.name for p in current_app.config["TRAINING_IMAGES_FOLDER"].glob("*.png")
     ]
-
     image_collection = [
         p.name for p in current_app.config["IMAGE_COLLECTION_FOLDER"].glob("*.png")
     ]
