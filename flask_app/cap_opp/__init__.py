@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from flask import Flask
 
 from cap_opp.config import get_config
@@ -12,6 +10,9 @@ def create_app():
     app = Flask(__name__)
     config = get_config()
     app.config.update(config.model_dump())
+    app.config["TRAINING_IMAGES_FOLDER"].mkdir(parents=True, exist_ok=True)
+    app.config["IMAGE_COLLECTION_FOLDER"].mkdir(parents=True, exist_ok=True)
+    app.config["PROCESSED_IMAGES_FOLDER"].mkdir(parents=True, exist_ok=True)
 
     app.register_blueprint(main_bp)
     app.register_blueprint(about_bp)

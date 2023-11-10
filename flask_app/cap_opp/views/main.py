@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import structlog
@@ -6,43 +7,42 @@ from flask import (
     current_app,
     redirect,
     render_template,
+    request,
     send_from_directory,
     url_for,
 )
 from werkzeug.utils import secure_filename
 
-from cap_opp.forms.image_forms import ImageForm
+from cap_opp.forms.image_forms import CollectionImagesForm, TrainingImagesForm
+from cap_opp.services.ml_service import MLService
 
 log = structlog.get_logger()
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
+ml_service = MLService()
 
 
 @main_bp.route("/", methods=["GET", "POST"])
 def index():
-    log.info("index", root_path=current_app.root_path)
-    log.info(
-        "training images folder", folder=current_app.config["TRAINING_IMAGES_FOLDER"]
-    )
-    log.info("current_path", current_path=Path.cwd())
-    training_images_form = ImageForm(csrf_enabled=False, label="Upload Training Images")
-    image_collection_form = ImageForm(
-        csrf_enabled=False, label="Upload Image Collection"
-    )
+    training_images_form = TrainingImagesForm()
+    collection_images_form = CollectionImagesForm()
 
     training_images = [
         p.name for p in current_app.config["TRAINING_IMAGES_FOLDER"].glob("*.png")
     ]
+
     image_collection = [
         p.name for p in current_app.config["IMAGE_COLLECTION_FOLDER"].glob("*.png")
     ]
 
-    processed_images = []
+    processed_images = [
+        p.name for p in current_app.config["PROCESSED_IMAGES_FOLDER"].glob("*.png")
+    ]
 
     return render_template(
         "index.html",
         training_images_form=training_images_form,
-        image_collection_form=image_collection_form,
+        collection_images_form=collection_images_form,
         training_images=training_images,
         image_collection=image_collection,
         processed_images=processed_images,
@@ -51,66 +51,53 @@ def index():
 
 @main_bp.route("/upload/training_images", methods=["POST"])
 def upload_training_images():
-    training_images_form = ImageForm(csrf_enabled=False, label="Upload Training Images")
-    image_collection_form = ImageForm(
-        csrf_enabled=False, label="Upload Image Collection"
-    )
+    training_images_form = TrainingImagesForm()
+    log.info("upload_training_images")
 
     if training_images_form.validate_on_submit():
-        for image in training_images_form.images.data:
+        for image in training_images_form.training_images.data:
             image_path = Path(
                 current_app.config["TRAINING_IMAGES_FOLDER"],
                 secure_filename(image.filename),
             )
-            log.info("image_path", image_path=image_path)
-            image_path.parent.mkdir(parents=True, exist_ok=True)
             image.save(image_path)
-            log.info("training image file uploaded", file_path=image_path)
-        # training_images_form.images.data = []
-        # training_images = [
-        #     p.name for p in app.config["TRAINING_IMAGES_FOLDER"].glob("*.jpg")
-        # ]
-    # return render_template(
-    #     "index.html",
-    #     training_images_form=training_images_form,
-    #     image_collection_form=image_collection_form,
-    # )
+
+        ml_service.train_svm(
+            ml_service.preprocess_and_extract_features(
+                current_app.config["TRAINING_IMAGES_FOLDER"]
+            )[1]
+        )
     return redirect(url_for("main.index"))
 
 
 @main_bp.route("/upload/collection_images", methods=["POST"])
 def upload_collection_images():
-    training_images_form = ImageForm(csrf_enabled=False, label="Upload Training Images")
-    image_collection_form = ImageForm(
-        csrf_enabled=False, label="Upload Image Collection"
-    )
+    collection_images_form = CollectionImagesForm()
 
-    if image_collection_form.validate_on_submit():
-        for image in image_collection_form.images.data:
+    if collection_images_form.validate_on_submit():
+        for image in collection_images_form.collection_images.data:
             image_path = Path(
                 current_app.config["IMAGE_COLLECTION_FOLDER"],
                 secure_filename(image.filename),
             )
             image.save(image_path)
-            log.info("image collection file uploaded", file_path=image_path)
-        # image_collection_form.images.data = []
-        # image_collection = [
-        #     p.name for p in app.config["IMAGE_COLLECTION_FOLDER"].glob("*.jpg")
-        # ]
-    # return render_template(
-    #     "index.html",
-    #     training_images_form=training_images_form,
-    #     image_collection_form=image_collection_form,
-    # )
+
+    for img_path, prediction, score, classification in ml_service.process_images(
+        current_app.config["IMAGE_COLLECTION_FOLDER"]
+    ):
+        if classification == "inlier":
+            shutil.copy(
+                img_path,
+                Path(current_app.config["PROCESSED_IMAGES_FOLDER"], img_path.name),
+            )
+
+            log.info(
+                f"IMAGE: {img_path}, PREDICTION: {prediction}, SCORE: {score}, CLASSIFICATION: {classification}"
+            )
+
     return redirect(url_for("main.index"))
 
 
 @main_bp.route("/uploaded/<folder>/<filename>")
 def uploaded_file(folder, filename):
-    log.info(
-        "uploaded file",
-        folder=folder,
-        filename=filename,
-        path=current_app.config[folder.upper()],
-    )
     return send_from_directory(current_app.config[folder.upper()], filename)

@@ -6,18 +6,15 @@ from wtforms.validators import DataRequired
 log = structlog.get_logger()
 
 
-# class TrainingImagesForm(FlaskForm):
-#     images = MultipleFileField("Upload Training Images", validators=[DataRequired()])
-#     submit1 = SubmitField("Upload")
+class TrainingImagesForm(FlaskForm):
+    training_images = MultipleFileField(
+        "Upload Training Images", validators=[DataRequired()]
+    )
+    training_submit = SubmitField("Upload")
 
 
-# class ImageCollectionForm(FlaskForm):
-#     images = MultipleFileField("Upload Image Collection", validators=[DataRequired()])
-#     submit2 = SubmitField("Upload")
-class ImageForm(FlaskForm):
-    images = MultipleFileField(validators=[DataRequired()])
-    submit = SubmitField("Upload")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.images.label = kwargs.get("label", "Upload Images")
+class CollectionImagesForm(FlaskForm):
+    collection_images = MultipleFileField(
+        "Upload Collection Images", validators=[DataRequired()]
+    )
+    collection_submit = SubmitField("Upload")
