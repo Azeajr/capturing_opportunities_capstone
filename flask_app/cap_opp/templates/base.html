@@ -2,9 +2,9 @@
 <html>
   <body>
     <div>
-      <a href="{{url_for('index')}}">Index</a>
+      <a href="{{url_for('main.index')}}">Index</a>
       |
-      <a href="{{url_for('about')}}">About</a>
+      <a href="{{url_for('about.index')}}">About</a>
     </div>
     <title>{% block title %}{% endblock %}</title>
     {% block content %} {% endblock %}
