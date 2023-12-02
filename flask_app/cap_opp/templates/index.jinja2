@@ -1,0 +1,42 @@
+{% extends "base.jinja2" %} {% block title %}Capturing Opportunities{% endblock %}
+{% block content %}
+
+<body>
+  <form action="{{url_for('main.upload_training_images')}}" method="post" enctype="multipart/form-data">
+    {{ training_images_form.hidden_tag() }}
+    <h1>Upload Training Images</h1>
+    {{ training_images_form.training_images() }} {{
+    training_images_form.training_submit() }}
+  </form>
+  {% if training_images %}
+  <h1>Training Images</h1>
+
+  {% for image_filename in training_images %}
+  <img src="{{ url_for('main.uploaded_file', folder='training_images_folder', filename=image_filename) }}"
+    alt="{{ image_filename }}" />
+  {% endfor %}
+  {% endif %}
+
+  <form action="{{url_for('main.upload_collection_images')}}" method="post" enctype="multipart/form-data">
+    {{ collection_images_form.hidden_tag() }}
+    <h1>Upload Image Collection</h1>
+    {{ collection_images_form.collection_images() }} {{
+    collection_images_form.collection_submit() }}
+  </form>
+  {% if image_collection %}
+  <h1>Image Collection</h1>
+  {% for image_filename in image_collection %}
+  <img src="{{ url_for('main.uploaded_file', folder='image_collection_folder', filename=image_filename) }}"
+    alt="{{ image_filename }}" />
+  {% endfor %}
+  {% endif %}
+
+  {% if processed_images %}
+  <h1>Matching Images</h1>
+  {% for image_filename in processed_images %}
+  <img src="{{ url_for('main.uploaded_file', folder='processed_images_folder', filename=image_filename) }}"
+    alt="{{ image_filename }}" />
+  {% endfor %}
+  {% endif %}
+</body>
+{% endblock %}
