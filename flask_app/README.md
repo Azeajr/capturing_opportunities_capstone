@@ -15,11 +15,13 @@ cd capturing_opportunities_capstone/flask_app
 ```
 2. Install dependencies using Poetry:
 ```bash
+poetry shell
 poetry install
 ```
 3. Run the Flask application:
 ```bash
-ENV=dev poetry run flask --app run.py run --debug
+cd cap_opp
+ENV=dev flask run --debug
 ```
 ## Usage
 After starting the application, navigate to http://localhost:5000 in your web browser to access the application.

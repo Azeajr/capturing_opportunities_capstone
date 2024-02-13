@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "flask-app"
+name = "cap_opp"
 version = "0.1.0"
 description = ""
 authors = ["Antonio Zea Jr <zeajantonio@gmail.com>"]

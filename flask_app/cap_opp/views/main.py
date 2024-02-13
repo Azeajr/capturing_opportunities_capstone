@@ -7,7 +7,6 @@ from flask import (
     current_app,
     redirect,
     render_template,
-    request,
     send_from_directory,
     url_for,
 )
@@ -19,7 +18,8 @@ from cap_opp.services.ml_service import MLService
 log = structlog.get_logger()
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
-ml_service = MLService()
+# ml_service = MLService(augment=True, min_training_size=100)
+ml_service = MLService(augment=False)
 
 
 @main_bp.route("/", methods=["GET", "POST"])
@@ -28,19 +28,18 @@ def index():
     collection_images_form = CollectionImagesForm()
 
     training_images = [
-        p.name for p in current_app.config["TRAINING_IMAGES_FOLDER"].glob("*.png")
+        p.name for p in current_app.config["TRAINING_IMAGES_FOLDER"].glob("*")
     ]
-
     image_collection = [
-        p.name for p in current_app.config["IMAGE_COLLECTION_FOLDER"].glob("*.png")
+        p.name for p in current_app.config["IMAGE_COLLECTION_FOLDER"].glob("*")
     ]
 
     processed_images = [
-        p.name for p in current_app.config["PROCESSED_IMAGES_FOLDER"].glob("*.png")
+        p.name for p in current_app.config["PROCESSED_IMAGES_FOLDER"].glob("*")
     ]
 
     return render_template(
-        "index.html",
+        "index.jinja2",
         training_images_form=training_images_form,
         collection_images_form=collection_images_form,
         training_images=training_images,
@@ -65,7 +64,7 @@ def upload_training_images():
         ml_service.train_svm(
             ml_service.preprocess_and_extract_features(
                 current_app.config["TRAINING_IMAGES_FOLDER"]
-            )[1]
+            )
         )
     return redirect(url_for("main.index"))
 
@@ -82,18 +81,18 @@ def upload_collection_images():
             )
             image.save(image_path)
 
-    for img_path, prediction, score, classification in ml_service.process_images(
-        current_app.config["IMAGE_COLLECTION_FOLDER"]
-    ):
-        if classification == "inlier":
-            shutil.copy(
-                img_path,
-                Path(current_app.config["PROCESSED_IMAGES_FOLDER"], img_path.name),
-            )
+        for img_path, prediction, score, classification in ml_service.process_images(
+            current_app.config["IMAGE_COLLECTION_FOLDER"]
+        ):
+            if classification == "inlier":
+                shutil.copy(
+                    img_path,
+                    Path(current_app.config["PROCESSED_IMAGES_FOLDER"], img_path.name),
+                )
 
-            log.info(
-                f"IMAGE: {img_path}, PREDICTION: {prediction}, SCORE: {score}, CLASSIFICATION: {classification}"
-            )
+                log.info(
+                    f"IMAGE: {img_path}, PREDICTION: {prediction}, SCORE: {score}, CLASSIFICATION: {classification}"
+                )
 
     return redirect(url_for("main.index"))
 
