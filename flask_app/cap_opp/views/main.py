@@ -1,5 +1,5 @@
-import shutil
 from pathlib import Path
+from typing import Any, Iterator
 
 import structlog
 from flask import (
@@ -9,17 +9,28 @@ from flask import (
     render_template,
     send_from_directory,
     url_for,
+    session,
+    jsonify,
 )
 from werkzeug.utils import secure_filename
 
 from cap_opp.forms.image_forms import CollectionImagesForm, TrainingImagesForm
-from cap_opp.services.ml_service import MLService
+from cap_opp.services.base import MlABC
+from cap_opp.services.svm import SVM
+from cap_opp.services.auto_encoder import AutoEncoder
+from cap_opp.config import get_config
+
+
+settings = get_config()
 
 log = structlog.get_logger()
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
-# ml_service = MLService(augment=True, min_training_size=100)
-ml_service = MLService(augment=False)
+
+if settings.MODEL == "svm":
+    ml_service: MlABC = SVM(augment=False)
+elif settings.MODEL == "auto_encoder":
+    ml_service: MlABC = AutoEncoder(augment=False)
 
 
 @main_bp.route("/", methods=["GET", "POST"])
@@ -34,9 +45,9 @@ def index():
         p.name for p in current_app.config["IMAGE_COLLECTION_FOLDER"].glob("*")
     ]
 
-    processed_images = [
-        p.name for p in current_app.config["PROCESSED_IMAGES_FOLDER"].glob("*")
-    ]
+    scored_paths = session.pop("scored_paths", [])
+    log.info("scored_paths", scored_paths=scored_paths)
+
 
     return render_template(
         "index.jinja2",
@@ -44,7 +55,7 @@ def index():
         collection_images_form=collection_images_form,
         training_images=training_images,
         image_collection=image_collection,
-        processed_images=processed_images,
+        processed_images=scored_paths,
     )
 
 
@@ -61,11 +72,8 @@ def upload_training_images():
             )
             image.save(image_path)
 
-        ml_service.train_svm(
-            ml_service.preprocess_and_extract_features(
-                current_app.config["TRAINING_IMAGES_FOLDER"]
-            )
-        )
+        ml_service.process_training_images(current_app.config["TRAINING_IMAGES_FOLDER"])
+
     return redirect(url_for("main.index"))
 
 
@@ -81,20 +89,19 @@ def upload_collection_images():
             )
             image.save(image_path)
 
-        for img_path, prediction, score, classification in ml_service.process_images(
+        scored_paths: Iterator[tuple[str, Any]] = ml_service.process_collection_images(
             current_app.config["IMAGE_COLLECTION_FOLDER"]
-        ):
-            if classification == "inlier":
-                shutil.copy(
-                    img_path,
-                    Path(current_app.config["PROCESSED_IMAGES_FOLDER"], img_path.name),
-                )
+        )
 
-                log.info(
-                    f"IMAGE: {img_path}, PREDICTION: {prediction}, SCORE: {score}, CLASSIFICATION: {classification}"
-                )
+        log.info("scored_paths_from_model", scored_paths=scored_paths)
 
-    return redirect(url_for("main.index"))
+        scored_paths = list(scored_paths)
+        scored_paths.sort(key=lambda x: x[1], reverse=True)
+        scored_paths = [p for p, _ in scored_paths]
+
+        session["scored_paths"] = jsonify(scored_paths).json
+
+    return redirect(url_for("main.index", scored_paths=scored_paths))
 
 
 @main_bp.route("/uploaded/<folder>/<filename>")

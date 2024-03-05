@@ -9,10 +9,12 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.svm import OneClassSVM
 import structlog
 
+from cap_opp.services.base import MlABC
+
 log = structlog.get_logger()
 
 
-class MLService:
+class SVM(MlABC):
     def __init__(self, augment=False, min_training_size=100):
         # Load MobileNetV3 pre-trained on ImageNet without the top layer
         self.model = tf.keras.applications.MobileNetV3Large(
@@ -34,6 +36,9 @@ class MLService:
                 horizontal_flip=True,
                 fill_mode="nearest",
             )
+
+    def process_training_images(self, img_path):
+        self.train_svm(self.preprocess_and_extract_features(img_path))
 
     def preprocess_and_extract_features(self, img_dir: Path, augment: bool = None):
         if augment is None:
@@ -79,8 +84,8 @@ class MLService:
         features = features.reshape((features.shape[0], -1))  # Flatten the features
         return features
 
-    def extract_features(self, img_dir):
-        img_paths = []
+    def extract_features(self, img_dir: Path):
+        img_paths: list[Path] = []
         img_list = []
         for img_path in img_dir.glob("*.png"):
             try:
@@ -98,11 +103,8 @@ class MLService:
             except Exception as e:
                 print(f"Error processing image {img_path}: {e}")
 
-        if not img_list:
-            return np.array([])
-
         # Ensure that img_batch has a batch dimension
-        img_batch = np.stack(img_list, axis=0)
+        img_batch = np.stack(img_list, axis=0) if img_list else np.array([])
 
         # Extract features using MobileNetV3
         features = self.model.predict(img_batch)
@@ -143,19 +145,28 @@ class MLService:
 
         return ["inlier" if score > self.threshold else "outlier" for score in scores]
 
-    def process_images(self, img_path):
+    def process_collection_images(self, img_path):
         # Convert single image path to a directory-like object for compatibility
         img_dir = Path(img_path)
         img_paths, scores, predictions = self.predict(img_dir)
 
+        img_paths = [p.name for p in img_paths]
+
         classifications = self.classify_images(scores)
 
-        return zip(
-            img_paths,
-            predictions.tolist(),
-            scores.tolist(),
-            classifications,
+        log.info(
+            "Paths and Scores",
+            paths=img_paths,
+            scores=scores.tolist(),
         )
+
+        # return zip(
+        #     img_paths,
+        #     predictions.tolist(),
+        #     scores.tolist(),
+        #     classifications,
+        # )
+        return zip(img_paths, scores.tolist())
 
 
 # Example usage:
