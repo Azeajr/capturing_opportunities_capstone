@@ -96,7 +96,7 @@ def upload_collection_images():
         log.info("scored_paths_from_model", scored_paths=scored_paths)
 
         scored_paths = list(scored_paths)
-        scored_paths.sort(key=lambda x: x[1], reverse=True)
+        scored_paths.sort(key=lambda x: x[1])
         scored_paths = [p for p, _ in scored_paths]
 
         session["scored_paths"] = jsonify(scored_paths).json
