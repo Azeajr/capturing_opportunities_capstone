@@ -13,6 +13,11 @@ def create_app():
     app.config["TRAINING_IMAGES_FOLDER"].mkdir(parents=True, exist_ok=True)
     app.config["IMAGE_COLLECTION_FOLDER"].mkdir(parents=True, exist_ok=True)
     app.config["PROCESSED_IMAGES_FOLDER"].mkdir(parents=True, exist_ok=True)
+    for file in app.config["TRAINING_IMAGES_FOLDER"].glob("*"):
+        file.unlink(missing_ok=True)
+
+    for file in app.config["IMAGE_COLLECTION_FOLDER"].glob("*"):
+        file.unlink(missing_ok=True)
 
     app.register_blueprint(main_bp)
     app.register_blueprint(about_bp)

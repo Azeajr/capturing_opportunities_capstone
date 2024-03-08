@@ -1,6 +1,12 @@
+import enum
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+
+class Models(str, enum.Enum):
+    SVM = "svm"
+    AUTO_ENCODER = "auto_encoder"
 
 
 class CommonSettings(BaseSettings):
@@ -8,9 +14,10 @@ class CommonSettings(BaseSettings):
     ENV: str
     SECRET_KEY: str = "mysecret"
     UPLOAD_FOLDER: Path = Path("temp", "uploads")
-    TRAINING_IMAGES_FOLDER: Path = UPLOAD_FOLDER / "training_images"
+    TRAINING_IMAGES_FOLDER: Path = UPLOAD_FOLDER / "training_images" / "raw"
     IMAGE_COLLECTION_FOLDER: Path = UPLOAD_FOLDER / "image_collection"
     PROCESSED_IMAGES_FOLDER: Path = UPLOAD_FOLDER / "processed_images"
+    MODEL: Models = Models.SVM
 
 
 class DevelopmentConfig(CommonSettings):

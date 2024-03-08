@@ -34,7 +34,7 @@
   {% if processed_images %}
   <h1>Matching Images</h1>
   {% for image_filename in processed_images %}
-  <img src="{{ url_for('main.uploaded_file', folder='processed_images_folder', filename=image_filename) }}"
+  <img src="{{ url_for('main.uploaded_file', folder='image_collection_folder', filename=image_filename) }}"
     alt="{{ image_filename }}" />
   {% endfor %}
   {% endif %}
