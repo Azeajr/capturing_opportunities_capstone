@@ -3,11 +3,11 @@ import os
 from pathlib import Path
 
 import numpy as np
+import structlog
 import tensorflow as tf
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import OneClassSVM
-import structlog
 
 from cap_opp.services.base import MlABC
 

@@ -1,14 +1,14 @@
-from typing import Any
-from cap_opp.services.base import MlABC
-
-import tensorflow as tf
-from pathlib import Path
-import random
 import math
+import random
 import shutil
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import structlog
+import tensorflow as tf
 
+from cap_opp.services.base import MlABC
 
 ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
 Model = tf.keras.models.Model

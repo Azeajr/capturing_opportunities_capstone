@@ -5,21 +5,23 @@ import structlog
 from flask import (
     Blueprint,
     current_app,
+    jsonify,
     redirect,
     render_template,
+    request,
     send_from_directory,
-    url_for,
     session,
-    jsonify,
+    url_for,
 )
+# from flask_wtf.csrf import generate_csrf
 from werkzeug.utils import secure_filename
 
+from cap_opp.config import get_config
 from cap_opp.forms.image_forms import CollectionImagesForm, TrainingImagesForm
+
+from cap_opp.services.auto_encoder import AutoEncoder
 from cap_opp.services.base import MlABC
 from cap_opp.services.svm import SVM
-from cap_opp.services.auto_encoder import AutoEncoder
-from cap_opp.config import get_config
-
 
 settings = get_config()
 
@@ -48,7 +50,6 @@ def index():
     scored_paths = session.pop("scored_paths", [])
     log.info("scored_paths", scored_paths=scored_paths)
 
-
     return render_template(
         "index.jinja2",
         training_images_form=training_images_form,
@@ -61,11 +62,20 @@ def index():
 
 @main_bp.route("/upload/training_images", methods=["POST"])
 def upload_training_images():
-    training_images_form = TrainingImagesForm()
     log.info("upload_training_images")
+    training_images_form = TrainingImagesForm()
 
-    if training_images_form.validate_on_submit():
+    data = training_images_form.training_images.data
+    log.info("data", data=data)
+    req = request.files
+    log.info("req", req=req)
+
+    value = training_images_form.validate_on_submit()
+    log.info("value", value=value)
+
+    if value:
         for image in training_images_form.training_images.data:
+            log.info("image", image=image)
             image_path = Path(
                 current_app.config["TRAINING_IMAGES_FOLDER"],
                 secure_filename(image.filename),
@@ -79,9 +89,18 @@ def upload_training_images():
 
 @main_bp.route("/upload/collection_images", methods=["POST"])
 def upload_collection_images():
+    log.info("upload_collection_images")
     collection_images_form = CollectionImagesForm()
 
-    if collection_images_form.validate_on_submit():
+    data = collection_images_form.collection_images.data
+    log.info("data", data=data)
+    req = request.files
+    log.info("req", req=req)
+
+    value = collection_images_form.validate_on_submit()
+    log.info("value", value=value)
+
+    if value:
         for image in collection_images_form.collection_images.data:
             image_path = Path(
                 current_app.config["IMAGE_COLLECTION_FOLDER"],
@@ -101,9 +120,19 @@ def upload_collection_images():
 
         session["scored_paths"] = jsonify(scored_paths).json
 
-    return redirect(url_for("main.index", scored_paths=scored_paths))
+    return redirect(url_for("main.index"))
 
 
 @main_bp.route("/uploaded/<folder>/<filename>")
 def uploaded_file(folder, filename):
     return send_from_directory(current_app.config[folder.upper()], filename)
+
+
+# @main_bp.route("/csrf_token", methods=["GET"])
+# def csrf_token():
+#     log.info("csrf_token")
+#     token = generate_csrf()
+
+#     session["csrf_token"] = token
+
+#     return jsonify({"csrf_token": token})
