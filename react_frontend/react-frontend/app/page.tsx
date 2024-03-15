@@ -27,9 +27,17 @@ const host = "http://localhost:8000";
 const training_endpoint = "/uploads/training_images";
 const collection_endpoint = "/uploads/collection_images";
 
+type scorededFilePaths = {
+  filePath: string;
+  score: number;
+};
+
 export default function Home() {
   // Use FileList type for the state that will hold the selected files
   const [files, setFiles] = useState<FileList | null>(null);
+  const [scorededFilePaths, setScoredFilePaths] = useState<scorededFilePaths[]>(
+    []
+  );
   // const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
   // Fetch the CSRF token from the server
@@ -69,12 +77,20 @@ export default function Home() {
         body: formData,
       });
 
+      if (api_endpoint.split("/").at(-1) === "collection_images") {
+        const {scored_paths} = await response.json();
+        setScoredFilePaths(scored_paths);
+        console.log(scorededFilePaths);
+      }
+
+    
+      // console.log(response.text());
+
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
 
       // const data = await response.json();
-      console.log(response);
       setFiles(null);
       alert("Files uploaded successfully!");
     } catch (error) {

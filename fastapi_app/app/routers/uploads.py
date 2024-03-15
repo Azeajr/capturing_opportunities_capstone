@@ -1,5 +1,6 @@
 from typing import Any, Iterator
 
+from fastapi.responses import FileResponse
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Request
 from sqlalchemy.orm import Session
@@ -75,6 +76,20 @@ async def upload_collection_images(files: list[UploadFile]):
         "scored_paths": scored_paths,
     }
 
+
+@router.get("/<folder>/<filename>")
+async def get_image(folder: str, filename: str):
+    if folder == "training_images":
+        image_path = settings.TRAINING_IMAGES_FOLDER / filename
+    elif folder == "collection_images":
+        image_path = settings.IMAGE_COLLECTION_FOLDER / filename
+    else:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    if not image_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(str(image_path))
 
 # @router.get("/users/", tags=["users"])
 # async def read_users():

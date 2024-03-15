@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import crud, models, schemas
 from app.config import get_config
@@ -19,6 +20,21 @@ for file in config.IMAGE_COLLECTION_FOLDER.glob("*"):
 
 app = FastAPI()
 
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:3000",
+    # "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 app.include_router(uploads.router)
 
@@ -28,6 +44,7 @@ async def root():
     content = """
 <head>
 <title>Upload Images</title>
+<script src="/static/js/htmx.min.js"></script>
 </head>
 
 <body>
