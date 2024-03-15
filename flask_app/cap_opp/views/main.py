@@ -22,6 +22,8 @@ from cap_opp.forms.image_forms import CollectionImagesForm, TrainingImagesForm
 from cap_opp.services.auto_encoder import AutoEncoder
 from cap_opp.services.base import MlABC
 from cap_opp.services.svm import SVM
+from cap_opp import db
+from cap_opp.models.scored_paths import ScoredPath
 
 settings = get_config()
 
@@ -115,6 +117,19 @@ def upload_collection_images():
         log.info("scored_paths_from_model", scored_paths=scored_paths)
 
         scored_paths = list(scored_paths)
+
+        for p, s in scored_paths:
+            log.info("p", p=p, s=s)
+            scored_path = ScoredPath(p, s)
+            db.session.add(scored_path)
+
+        db.session.commit()
+
+
+
+
+
+
         scored_paths.sort(key=lambda x: x[1])
         scored_paths = [p for p, _ in scored_paths]
 

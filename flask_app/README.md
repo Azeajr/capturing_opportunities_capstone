@@ -18,10 +18,15 @@ cd capturing_opportunities_capstone/flask_app
 poetry shell
 poetry install
 ```
+3. Initialize the database:
+```bash
+flask init-db
+```
+
 3. Run the Flask application:
 ```bash
 cd cap_opp
-ENV=dev flask run --debug
+ENV=dev MODEL=auto_encoder gunicorn -w 4 "app:app" 
 ```
 ## Usage
 After starting the application, navigate to http://localhost:5000 in your web browser to access the application.
