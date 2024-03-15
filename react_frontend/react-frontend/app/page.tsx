@@ -24,8 +24,8 @@ const VisuallyHiddenInput = styled("input")({
 
 const host = "http://localhost:8000";
 
-const training_endpoint = "/upload/training_images";
-const collection_endpoint = "/upload/collection_images";
+const training_endpoint = "/uploads/training_images";
+const collection_endpoint = "/uploads/collection_images";
 
 export default function Home() {
   // Use FileList type for the state that will hold the selected files
@@ -60,16 +60,13 @@ export default function Home() {
     // Use Array.from to iterate over the FileList since it's not an actual array
     Array.from(files).forEach((file) => {
       // formData.append(api_endpoint.split("/").at(-1)!, file);
-      formData.append("file", file);
+      formData.append("files", file);
     });
 
     try {
       const response = await fetch(`${host}${api_endpoint}`, {
         method: "POST",
         body: formData,
-        // headers: {
-        //   'X-CSRF-Token': csrfToken!,
-        // },
       });
 
       if (!response.ok) {
