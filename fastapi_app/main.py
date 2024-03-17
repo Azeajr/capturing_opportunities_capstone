@@ -1,13 +1,10 @@
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
-from app import crud, models, schemas
 from app.config import get_config
-from app.database import SessionLocal, engine
 from app.routers import uploads
-
-models.Base.metadata.create_all(bind=engine)
 
 config = get_config()
 
@@ -38,24 +35,30 @@ app.add_middleware(
 
 app.include_router(uploads.router)
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.get("/")
 async def root():
     content = """
 <head>
 <title>Upload Images</title>
-<script src="/static/js/htmx.min.js"></script>
+<script src="static/js/htmx.min.js"></script>
 </head>
 
 <body>
-<form action="/uploads/training_images" enctype="multipart/form-data" method="post">
-<input name="files" type="file" multiple>
-<input type="submit">
+<form hx-encoding="multipart/form-data" hx-post="/uploads/training_images" hx-target="#training_output" hx-swap="innerHTML">
+    <input name="files" type="file" multiple>
+    <input type="submit">
 </form>
-<form action="/uploads/collection_images" enctype="multipart/form-data" method="post">
-<input name="files" type="file" multiple>
-<input type="submit">
+<div id=training_output style="overflow: auto; height: 30%; width: 90%; border: 1px solid black; margin: 10px; padding: 10px;">
+</div>
+<form hx-encoding="multipart/form-data" hx-post="/uploads/collection_images" hx-target="#collection_output" hx-swap="innerHTML">
+    <input name="files" type="file" multiple>
+    <input type="submit">
 </form>
+<div id="collection_output" style="overflow: auto; height: 30%; width: 90%; border: 1px solid black; margin: 10px; padding: 10px;">
+</div>
 </body>
     """
     return HTMLResponse(content=content)

@@ -1,13 +1,10 @@
 from typing import Any, Iterator
 
-from fastapi.responses import FileResponse
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, Request
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 
-from app import crud, models, schemas
 from app.config import get_config
-from app.database import SessionLocal, engine
 from app.services.auto_encoder import AutoEncoder
 from app.services.base import MlABC
 from app.services.svm import SVM
@@ -48,7 +45,18 @@ async def upload_training_images(files: list[UploadFile], request: Request):
 
     ml.process_training_images(settings.TRAINING_IMAGES_FOLDER)
 
-    return {"filenames": [file.filename for file in files]}
+    # return {"filenames": [file.filename for file in files]}
+    return {
+        "data": {
+            "type": "modelTraining",
+            "attributes": {
+                "status": "completed",
+            },
+        },
+        "meta": {
+            "message": "Model training completed successfully",
+        },
+    }
 
 
 @router.post("/collection_images")
@@ -66,14 +74,25 @@ async def upload_collection_images(files: list[UploadFile]):
 
     scored_paths = list(scored_paths)
 
-    # for path, score in scored_paths:
-    #     scored_path = schemas.ScoredPathCreate(path=path, score=score)
-    #     db_scored_path = crud.create_scored_path(db, scored_path=scored_path)
-    
-
     return {
-        "filenames": [file.filename for file in files],
-        "scored_paths": scored_paths,
+        "data": [
+            {
+                "type": "imageComparisonResults",
+                "attributes": {
+                    "imagePath": path,
+                    "score": score,
+                },
+            }
+            for path, score in scored_paths
+        ],
+        "meta": {
+            "totalResults": len(scored_paths),
+            "modelUsed": settings.MODEL,
+            "message": "Image comparison completed successfully",
+        },
+        "links": {
+            "self": str(settings.IMAGE_COLLECTION_FOLDER),
+        },
     }
 
 
@@ -90,6 +109,7 @@ async def get_image(folder: str, filename: str):
         raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(str(image_path))
+
 
 # @router.get("/users/", tags=["users"])
 # async def read_users():
