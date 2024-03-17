@@ -18,6 +18,5 @@ source ~/.bashrc
 pyenv install 3.11.6
 poetry shell
 poetry install
-cd cap_opp
-ENV=dev flask run --debug
+ENV=dev MODEL=auto_encoder uvicorn main:app --reload 
 ```
