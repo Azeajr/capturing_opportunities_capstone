@@ -1,6 +1,11 @@
 <script lang="ts">
 	import ImageGrid from './ImageGrid.svelte';
 
+	const host = 'http://localhost:8000';
+
+	const training_endpoint = '/uploads/training_images';
+	const collection_endpoint = '/uploads/collection_images';
+
 	let trainingFileList: { file: File; uuid: string }[] = [];
 	let collectionFileList: { file: File; uuid: string }[] = [];
 
@@ -15,7 +20,20 @@
 			return;
 		}
 
-		trainingFileList = fileList;
+		// trainingFileList = fileList;
+		const formData = new FormData();
+		fileList.forEach((file) => {
+			formData.append('files', file.file);
+		});
+
+		const response = await fetch(`${host}${training_endpoint}`, {
+			method: 'POST',
+			body: formData
+		});
+
+		const data = await response.json();
+
+		console.log(data);
 	}
 
 	async function handleCollectionFileChange(
@@ -25,11 +43,25 @@
 		}[]
 	) {
 		if (!fileList) {
-      console.error('No collection data selected.');
-      return;
-    }
+			console.error('No collection data selected.');
+			return;
+		}
 
-    collectionFileList = fileList;
+		// collectionFileList = fileList;
+
+		const formData = new FormData();
+		fileList.forEach((file) => {
+			formData.append('files', file.file);
+		});
+
+		const response = await fetch(`${host}${collection_endpoint}`, {
+			method: 'POST',
+			body: formData
+		});
+
+		const data = await response.json();
+
+		console.log(data);
 	}
 </script>
 
