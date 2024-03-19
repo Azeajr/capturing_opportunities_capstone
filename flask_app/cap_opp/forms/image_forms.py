@@ -1,20 +1,21 @@
 import structlog
 from flask_wtf import FlaskForm
-from wtforms import MultipleFileField, SubmitField
-from wtforms.validators import DataRequired
+from flask_wtf.file import FileRequired, MultipleFileField
 
 log = structlog.get_logger()
 
 
 class TrainingImagesForm(FlaskForm):
     training_images = MultipleFileField(
-        "Upload Training Images", validators=[DataRequired()]
+        "Upload Training Images", validators=[FileRequired()]
     )
-    training_submit = SubmitField("Upload")
+    class Meta:
+        csrf = False
 
 
 class CollectionImagesForm(FlaskForm):
     collection_images = MultipleFileField(
-        "Upload Collection Images", validators=[DataRequired()]
+        "Upload Collection Images", validators=[FileRequired()]
     )
-    collection_submit = SubmitField("Upload")
+    class Meta:
+        csrf = False

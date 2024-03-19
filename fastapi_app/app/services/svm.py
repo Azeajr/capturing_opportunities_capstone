@@ -1,5 +1,4 @@
 # cap_opp/ml_service.py
-import os
 from pathlib import Path
 
 import numpy as np
@@ -9,7 +8,7 @@ from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import OneClassSVM
 
-from cap_opp.services.base import MlABC
+from app.services.base import MlABC
 
 log = structlog.get_logger()
 
