@@ -1,3 +1,5 @@
+import pickle
+import uuid
 from pathlib import Path
 
 import numpy as np
@@ -7,22 +9,31 @@ from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import OneClassSVM
 
+from app.config import get_config
 from app.services.base import MlABC
 
 # log = structlog.get_logger()
 
 # Minimum number of training images required to train the SVM
 min_training_size = 100
+config = get_config()
 
 
 class SVM(MlABC):
-    def __init__(self):
+    def __init__(self, model_path: Path = None):
         self.logger = structlog.get_logger()
         # Load MobileNetV3 pre-trained on ImageNet without the top layer
         self.model = tf.keras.applications.MobileNetV3Large(
             weights="imagenet", include_top=False
         )
-        self.best_svm = None  # Placeholder for the trained SVM model
+
+        if model_path:
+            with open(config.MODELS_FOLDER / "svm" / model_path, "rb") as f:
+                self.best_svm = pickle.load(f)
+        else:
+            self.best_svm = None
+
+        # Placeholder for the trained SVM model
 
     def process_training_images(self, img_path):
         img_dir_size = len(list(img_path.glob("*")))
@@ -62,7 +73,7 @@ class SVM(MlABC):
                 print(f"Error processing image {path}: {e}")
 
         if not img_list:
-            return np.array([])
+            return None
 
         self.logger.info("Length of training images", length=len(img_list))
         # Ensure that img_batch has a batch dimension
@@ -85,11 +96,21 @@ class SVM(MlABC):
         clf.fit(features)
         self.best_svm = clf.best_estimator_
 
+        # Save the best SVM model
+        model_id = uuid.uuid4()
+        path = config.MODELS_FOLDER / "svm" / str(model_id)
+        path.mkdir(parents=True, exist_ok=True)
+
+        with open(path / "svm.pkl", "wb") as f:
+            pickle.dump(self.best_svm, f)
+
+        return Path("/svm") / str(model_id) / "svm.pkl"
+
     def process_collection_images(self, img_path):
         # Convert single image path to a directory-like object for compatibility
 
-        if self.best_svm is None:
-            raise ValueError("The SVM model has not been trained yet.")
+        if not self.best_svm:
+            raise ValueError("SVM model not loaded")
 
         img_paths: list[Path] = []
         img_list = []
@@ -127,10 +148,4 @@ class SVM(MlABC):
             scores=scores.tolist(),
         )
 
-        # return zip(
-        #     img_paths,
-        #     predictions.tolist(),
-        #     scores.tolist(),
-        #     classifications,
-        # )
         return zip(img_paths, scores.tolist())

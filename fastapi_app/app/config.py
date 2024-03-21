@@ -13,10 +13,10 @@ class CommonSettings(BaseSettings):
     APP_NAME: str = "Capture Opportunities"
     ENV: str
     SECRET_KEY: str = "mysecret"
-    UPLOAD_FOLDER: Path = Path("temp", "uploads")
-    TRAINING_IMAGES_FOLDER: Path = UPLOAD_FOLDER / "training_images" / "raw"
-    IMAGE_COLLECTION_FOLDER: Path = UPLOAD_FOLDER / "image_collection"
-    PROCESSED_IMAGES_FOLDER: Path = UPLOAD_FOLDER / "processed_images"
+    UPLOADS_FOLDER: Path = Path("temp", "uploads")
+    TRAINING_IMAGES_FOLDER: Path = UPLOADS_FOLDER / "training_images" / "raw"
+    IMAGE_COLLECTION_FOLDER: Path = UPLOADS_FOLDER / "image_collection"
+    MODELS_FOLDER: Path = Path("temp", "models")
     MODEL: Models = Models.SVM
 
 

@@ -1,27 +1,41 @@
+import uuid
 from pathlib import Path
 
+# from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D
+import keras
 import numpy as np
 import structlog
 import tensorflow as tf
 
+# from keras.preproc
+from keras.models import Model
+
+from app.config import get_config
 from app.services.base import MlABC
 
+config = get_config()
+
 ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
-Model = tf.keras.models.Model
-Input = tf.keras.layers.Input
-Conv2D = tf.keras.layers.Conv2D
-MaxPooling2D = tf.keras.layers.MaxPooling2D
-UpSampling2D = tf.keras.layers.UpSampling2D
-# TARGET_SIZE = (1920, 1080)
+
 TARGET_SIZE = (224, 224)
 BATCH_SIZE = 32
 DESIRED_DATASET_SIZE = 100
 
 
 class AutoEncoder(MlABC):
-    def __init__(self):
+    def __init__(self, model_path: Path = None):
         self.logger = structlog.get_logger()
-        self.autoencoder = None
+        if model_path:
+            self.logger.info(
+                "AutoEncoder",
+                model_path=model_path,
+                full_path=(config.MODELS_FOLDER / "auto_encoder" / model_path),
+            )
+        self.autoencoder = (
+            keras.models.load_model(config.MODELS_FOLDER / "auto_encoder" / model_path)
+            if model_path
+            else None
+        )
 
     def process_training_images(self, img_path):
         self.logger.info("Processing Training Images", img_path=img_path)
@@ -47,17 +61,21 @@ class AutoEncoder(MlABC):
             shuffle=True,
         )
 
-        input_img = Input(shape=(224, 224, 3))
-        x = Conv2D(32, (3, 3), activation="relu", padding="same")(input_img)
-        x = MaxPooling2D((2, 2), padding="same")(x)
-        x = Conv2D(16, (3, 3), activation="relu", padding="same")(x)
-        encoded = MaxPooling2D((2, 2), padding="same")(x)
+        input_img = keras.layers.Input(shape=(224, 224, 3))
+        x = keras.layers.Conv2D(32, (3, 3), activation="relu", padding="same")(
+            input_img
+        )
+        x = keras.layers.MaxPooling2D((2, 2), padding="same")(x)
+        x = keras.layers.Conv2D(16, (3, 3), activation="relu", padding="same")(x)
+        encoded = keras.layers.MaxPooling2D((2, 2), padding="same")(x)
 
-        x = Conv2D(16, (3, 3), activation="relu", padding="same")(encoded)
-        x = UpSampling2D((2, 2))(x)
-        x = Conv2D(32, (3, 3), activation="relu", padding="same")(x)
-        x = UpSampling2D((2, 2))(x)
-        decoded = Conv2D(3, (3, 3), activation="sigmoid", padding="same")(x)
+        x = keras.layers.Conv2D(16, (3, 3), activation="relu", padding="same")(encoded)
+        x = keras.layers.UpSampling2D((2, 2))(x)
+        x = keras.layers.Conv2D(32, (3, 3), activation="relu", padding="same")(x)
+        x = keras.layers.UpSampling2D((2, 2))(x)
+        decoded = keras.layers.Conv2D(3, (3, 3), activation="sigmoid", padding="same")(
+            x
+        )
 
         autoencoder = Model(input_img, decoded)
         autoencoder.compile(optimizer="adam", loss="binary_crossentropy")
@@ -78,9 +96,19 @@ class AutoEncoder(MlABC):
 
         self.autoencoder = autoencoder
 
+        model_id = uuid.uuid4()
+        path = config.MODELS_FOLDER / "auto_encoder" / str(model_id)
+        path.mkdir(parents=True, exist_ok=True)
+        autoencoder.save(path / "autoencoder.keras")
+
+        return Path("/auto_encoder") / str(model_id) / "autoencoder.keras"
+
     def process_collection_images(self, img_path):
+        if not self.autoencoder:
+            raise ValueError("Autoencoder model not loaded")
+
         collection_ds: tf.data.Dataset = (
-            tf.keras.preprocessing.image_dataset_from_directory(
+            keras.preprocessing.image_dataset_from_directory(
                 img_path,
                 labels=None,
                 seed=123,
@@ -92,9 +120,9 @@ class AutoEncoder(MlABC):
 
         file_paths = [Path(path).name for path in collection_ds.file_paths]
 
-        data_augmentation = tf.keras.Sequential(
+        data_augmentation = keras.Sequential(
             [
-                tf.keras.layers.Rescaling(1.0 / 255),
+                keras.layers.Rescaling(1.0 / 255),
             ]
         )
 
