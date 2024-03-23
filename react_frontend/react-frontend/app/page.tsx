@@ -1,8 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import Button from "@mui/material/Button";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import styled from "@emotion/styled";
+import UploadSection from "./components/upload-section";
 
 // Import necessary CSS files
 import "@fontsource/roboto/300.css";
@@ -10,150 +8,44 @@ import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 
-const VisuallyHiddenInput = styled("input")({
-  clip: "rect(0 0 0 0)",
-  clipPath: "inset(50%)",
-  height: 1,
-  overflow: "hidden",
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  whiteSpace: "nowrap",
-  width: 1,
-});
-
-const host = "http://localhost:8000";
-
-const training_endpoint = "/uploads/training_images";
-const collection_endpoint = "/uploads/collection_images";
-
-type scorededFilePaths = {
-  filePath: string;
-  score: number;
-};
-
 export default function Home() {
-  // Use FileList type for the state that will hold the selected files
-  const [files, setFiles] = useState<FileList | null>(null);
-  const [scorededFilePaths, setScoredFilePaths] = useState<scorededFilePaths[]>(
-    []
-  );
-  // const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const training_endpoint = "/uploads/training_images";
+  const collection_endpoint = "/uploads/collection_images";
+  const [matchingFiles, setMatchingFiles] = useState<File[]>([])
 
-  // Fetch the CSRF token from the server
-  // React.useEffect(() => {
-  //   fetch(`${host}/csrf_token`)
-  //     .then((response) => response.json())
-  //     .then((data) => {
-  //       setCsrfToken(data.csrfToken);
-  //     });
-  // }, []);
-
-  // The event type is React.ChangeEvent<HTMLInputElement> for an input change event
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    // Check if files are selected and update the state
-    if (event.target.files) {
-      setFiles(event.target.files);
-    }
-  };
-
-  // The upload function doesn't directly interact with any DOM events, so it doesn't need a specific event type
-  const handleUpload = async (api_endpoint: string) => {
-    if (!files) {
-      alert("No files selected.");
-      return;
-    }
-
-    const formData = new FormData();
-    // Use Array.from to iterate over the FileList since it's not an actual array
-    Array.from(files).forEach((file) => {
-      // formData.append(api_endpoint.split("/").at(-1)!, file);
-      formData.append("files", file);
-    });
-
-    try {
-      const response = await fetch(`${host}${api_endpoint}`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (api_endpoint.split("/").at(-1) === "collection_images") {
-        const {scored_paths} = await response.json();
-        setScoredFilePaths(scored_paths);
-        console.log(scorededFilePaths);
-      }
-
-    
-      // console.log(response.text());
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-
-      // const data = await response.json();
-      setFiles(null);
-      alert("Files uploaded successfully!");
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert("Failed to upload files.");
-    }
-  };
+  // function used in child component that will send back matching image files to display
+  const sendMatchingFiles = (files: File[]) => {
+    const topFiles = files.slice(0, 10)
+    setMatchingFiles(topFiles);
+  }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div>
-        <Button
-          component="label"
-          role={undefined}
-          variant="contained"
-          tabIndex={-1}
-          startIcon={<CloudUploadIcon />}
-        >
-          Training Images
-          <input
-            type="file"
-            hidden
-            onChange={handleFileChange}
-            accept="image/*"
-            multiple
-          />
-        </Button>
-        {files && (
-          <Button
-            onClick={() => handleUpload(training_endpoint)}
-            variant="contained"
-            color="primary"
-          >
-            Submit Files
-          </Button>
-        )}
-      </div>
-      <div>
-        <Button
-          component="label"
-          role={undefined}
-          variant="contained"
-          tabIndex={-1}
-          startIcon={<CloudUploadIcon />}
-        >
-          Collection Images
-          <input
-            type="file"
-            hidden
-            onChange={handleFileChange}
-            accept="image/*"
-            multiple
-          />
-        </Button>
-        {files && (
-          <Button
-            onClick={() => handleUpload(collection_endpoint)}
-            variant="contained"
-            color="primary"
-          >
-            Submit Files
-          </Button>
-        )}
+    <main className="flex min-h-screen flex-col justify-between p-24">
+      <div className="flex flex-col z-10 justify-between gap-10">
+        <h1>Capturing Opportunities: AI-Driven Photo Curation for Wildlife Photographer</h1>
+        <div className="flex flex-row gap-5">
+          <UploadSection title="Upload Training Images" apiEndpoint={training_endpoint} sendMatchingFiles={sendMatchingFiles} />
+          <UploadSection title="Upload Image Collection" apiEndpoint={collection_endpoint} sendMatchingFiles={sendMatchingFiles} />
+        </div>
+        <div className="p-3 bg-white rounded-md">
+          <h3>Matching Images</h3>
+          <div className="h-60">
+            {matchingFiles.length === 0 ? (
+              <span>Please upload training and collection images to see your results.</span>
+            ) : (
+              <div className="flex flex-wrap gap-2 mt-2 overflow-scroll">
+                {matchingFiles.map((file, key) => {
+                  return (
+                    <div key={key} className="overflow-hidden relative">
+                      <img onClick={() => { console.log(file) }} className="h-20 w-20 rounded-md" src={URL.createObjectURL(file)} />
+                      <span className="text-[12px]">{file.name}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </main>
   );
