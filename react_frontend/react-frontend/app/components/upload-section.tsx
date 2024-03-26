@@ -67,7 +67,8 @@ export default function UploadSection(props: UploadSectionProps) {
 
     const handleMatchingFiles = (data: CollectionData[]) => {
         // sort the collection response data by score
-        const sortedData = data.sort((a, b) => b.attributes.score - a.attributes.score);
+        const sortedData = data.sort((a, b) => a.attributes.score - b.attributes.score);
+        console.log(sortedData);
 
         // sort collection files stored in state 
         const sortedFiles: File[] = [];
@@ -79,7 +80,7 @@ export default function UploadSection(props: UploadSectionProps) {
                 }
             })
         })
-
+        console.log(sortedFiles);
         // send sorted files to main page to display matching images
         sendMatchingFiles(sortedFiles);
     }
