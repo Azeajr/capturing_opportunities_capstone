@@ -4,26 +4,38 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  /* --background-start-rgb: 14, 165, 233; */
+  --background-start-rgb: 25, 118, 210;
+  /* --background-end-rgb: 224, 242, 254; */
+  --background-end-rgb: 219, 234, 254;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background-start-rgb: 23, 37, 84;
+    --background-end-rgb: 29, 78, 216;
   }
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
+  background: linear-gradient(to bottom,
       transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+      rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+  font-family: roboto;
+}
+
+body h1 {
+  font-size: xx-large;
+}
+
+body h2 {
+  font-size: x-large;
+}
+
+body h3 {
+  font-size: large;
 }
 
 @layer utilities {
