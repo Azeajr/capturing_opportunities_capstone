@@ -5,6 +5,13 @@ import Typography from '@mui/material/Typography';
 import Modal from '@mui/material/Modal';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import LinearProgress from '@mui/material/LinearProgress';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useUploadFiles } from "../service/use-upload-files";
 import { CollectionData } from '../model/model';
 
@@ -26,17 +33,32 @@ type UploadSectionProps = {
     title: string;
     apiEndpoint: string;
     sendMatchingFiles: (files: File[]) => void;
+    setCollectionEndpoint: (endpoint: string) => void;
 }
 
 export default function UploadSection(props: UploadSectionProps) {
-    const { title, apiEndpoint, sendMatchingFiles } = props;
+    const { title, apiEndpoint, sendMatchingFiles, setCollectionEndpoint } = props;
     const [files, setFiles] = useState<File[]>([]);
     const [scoredFilePaths, setScoredFilePaths] = useState<CollectionData[] | null>(null);
     const [message, setMessage] = useState<string>();
     const [filesMessage, setFilesMessage] = useState<string>();
     const [openModal, setOpenModal] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [selectedModel, setModel] = useState<string>('svm');
+    const isTraining = apiEndpoint.includes('training_images');
+    const isCollection = apiEndpoint.includes('collection_images');
     const buttonSpacing = files.length > 0 ? 'justify-between' : 'gap-10';
+
+    const handleModelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setModel((event.target as HTMLInputElement).value);
+    };
+
+    const handleToggleChange = (
+        event: React.MouseEvent<HTMLElement>,
+        newAlignment: string,
+    ) => {
+        setModel(newAlignment);
+    };
 
     useEffect(() => {
         switch (files.length) {
@@ -104,12 +126,15 @@ export default function UploadSection(props: UploadSectionProps) {
         });
 
         try {
-            const url = `${host}${apiEndpoint}`
+            const url = isTraining ? `${host}${apiEndpoint}/${selectedModel}` : `${host}${apiEndpoint}`
             const response = await useUploadFiles(url, formData)
                 .then((e) => {
                     console.log("data", e);
                     setMessage(e.meta.message);
-                    if (url.includes('collection_images')) {
+                    if (isTraining && e.data.attributes.collectionApiEndpoint) {
+                        setCollectionEndpoint(e.data.attributes.collectionApiEndpoint)
+                    }
+                    if (isCollection) {
                         setScoredFilePaths(e.data);
                         handleMatchingFiles(e.data);
                     }
@@ -166,6 +191,41 @@ export default function UploadSection(props: UploadSectionProps) {
                     </div>
                 )}
             </div>
+            {isTraining ? (
+                <div>
+                    <FormControl>
+                        <FormLabel id="demo-controlled-radio-buttons-group">Choose a model to train</FormLabel>
+                        <div className="flex flex-row">
+                            {/* option 1 - radio button*/}
+                            <RadioGroup
+                                row
+                                aria-labelledby="demo-controlled-radio-buttons-group"
+                                name="controlled-radio-buttons-group"
+                                value={selectedModel}
+                                onChange={handleModelChange}
+                            >
+                                <FormControlLabel value="svm" control={<Radio />} label="SVM" />
+                                <FormControlLabel value="auto_encoder" control={<Radio />} label="Auto encoder" />
+                            </RadioGroup>
+                            {/* option 2 - toggle button*/}
+                            {/* <ToggleButtonGroup
+                                color="primary"
+                                value={selectedModel}
+                                exclusive
+                                onChange={handleToggleChange}
+                                aria-label="Platform"
+                            >
+                                <ToggleButton value="svm">SVM</ToggleButton>
+                                <ToggleButton value="auto_encoder">Auto encoder</ToggleButton>
+                            </ToggleButtonGroup> */}
+                        </div>
+
+                    </FormControl>
+                </div>
+            ) : (
+                <div className="h-16"></div>
+            )}
+
             <div className={`flex flex-row mt-4 ${buttonSpacing}`}>
                 <Button
                     component="label"

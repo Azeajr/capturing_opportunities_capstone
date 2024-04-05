@@ -9,8 +9,8 @@ import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 
 export default function Home() {
-  const training_endpoint = "/uploads/training_images";
-  const collection_endpoint = "/uploads/collection_images";
+  const trainingEndpoint = "/uploads/training_images";
+  const [collectionEndpoint, setCollectionEndpoint] = useState<string>('/uploads/collection_images');
   const [matchingFiles, setMatchingFiles] = useState<File[]>([])
 
   // function used in child component that will send back matching image files to display
@@ -24,8 +24,8 @@ export default function Home() {
       <div className="flex flex-col z-10 justify-between gap-10">
         <h1>Capturing Opportunities: AI-Driven Photo Curation for Wildlife Photographer</h1>
         <div className="flex flex-row gap-5">
-          <UploadSection title="Upload Training Images" apiEndpoint={training_endpoint} sendMatchingFiles={sendMatchingFiles} />
-          <UploadSection title="Upload Image Collection" apiEndpoint={collection_endpoint} sendMatchingFiles={sendMatchingFiles} />
+          <UploadSection title="Upload Training Images" apiEndpoint={trainingEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} />
+          <UploadSection title="Upload Image Collection" apiEndpoint={collectionEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} />
         </div>
         <div className="p-3 bg-white rounded-md">
           <h3>Matching Images</h3>
