@@ -1,5 +1,6 @@
 import shutil
 
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -39,7 +40,9 @@ app.add_middleware(
 app.include_router(uploads.router)
 app.include_router(models.router)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_folder = Path(__file__).parent / "static"
+
+app.mount("/static", StaticFiles(directory=static_folder), name="static")
 
 
 @app.get("/")
