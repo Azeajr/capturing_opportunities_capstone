@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_config
 from app.routers import models, uploads
+from app.logger import setup_logging
+
 
 config = get_config()
 
@@ -17,6 +19,9 @@ shutil.rmtree(config.MODELS_FOLDER, ignore_errors=True)
 config.TRAINING_IMAGES_FOLDER.mkdir(parents=True, exist_ok=True)
 config.IMAGE_COLLECTION_FOLDER.mkdir(parents=True, exist_ok=True)
 config.MODELS_FOLDER.mkdir(parents=True, exist_ok=True)
+config.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+setup_logging()
 
 
 app = FastAPI()

@@ -18,6 +18,8 @@ class CommonSettings(BaseSettings):
     IMAGE_COLLECTION_FOLDER: Path = UPLOADS_FOLDER / "image_collection"
     MODELS_FOLDER: Path = Path("temp", "models")
     MODEL: Models = Models.SVM
+    LOG_LEVEL: str = "DEBUG"
+    LOG_FILE: Path = Path("temp", "logs", "app.jsonl")
 
 
 class DevelopmentConfig(CommonSettings):
