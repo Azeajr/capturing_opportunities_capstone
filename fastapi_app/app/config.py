@@ -12,7 +12,7 @@ class Models(str, enum.Enum):
 class CommonSettings(BaseSettings):
     APP_NAME: str = "Capture Opportunities"
     ENV: str
-    SECRET_KEY: str = "mysecret"
+    API_KEY: str = "api_secret_key"
     UPLOADS_FOLDER: Path = Path("temp", "uploads")
     TRAINING_IMAGES_FOLDER: Path = UPLOADS_FOLDER / "training_images" / "raw"
     IMAGE_COLLECTION_FOLDER: Path = UPLOADS_FOLDER / "image_collection"
@@ -22,14 +22,16 @@ class CommonSettings(BaseSettings):
 
 class DevelopmentConfig(CommonSettings):
     DEBUG: bool = True
+    API_KEY: str = "devsecret"
 
 
 class TestingConfig(CommonSettings):
     TESTING: bool = True
+    API_KEY: str = "testsecret"
 
 
 class ProductionConfig(CommonSettings):
-    SECRET_KEY: str
+    API_KEY: str
 
 
 def get_config():
