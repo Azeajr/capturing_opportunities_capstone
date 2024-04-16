@@ -22,7 +22,13 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col justify-between p-24">
       <div className="flex flex-col z-10 justify-between gap-10">
-        <h1>Capturing Opportunities: AI-Driven Photo Curation for Wildlife Photographer</h1>
+        <div className="text-white">
+          <h1 className="font-bold">Capturing Opportunities: AI-Driven Photo Curation for Wildlife Photographer</h1>
+          <p className="pt-3">
+            Please select a model and then upload images to train the model on. Afterwards, please upload a collection of images that the machine-learning model will sort accordingly and display the top 10 matching images.
+          </p>
+        </div>
+
         <div className="flex flex-row gap-5">
           <UploadSection title="Upload Training Images" apiEndpoint={trainingEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} />
           <UploadSection title="Upload Image Collection" apiEndpoint={collectionEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} />
@@ -33,10 +39,10 @@ export default function Home() {
             {matchingFiles.length === 0 ? (
               <span>Please upload training and collection images to see your results.</span>
             ) : (
-              <div className="flex flex-wrap gap-2 mt-2 overflow-scroll">
+              <div className="flex flex-wrap gap-2 mt-2 h-60">
                 {matchingFiles.map((file, key) => {
                   return (
-                    <div key={key} className="overflow-hidden relative">
+                    <div key={key} className="relative">
                       <img onClick={() => { console.log(file) }} className="h-20 w-20 rounded-md" src={URL.createObjectURL(file)} />
                       <span className="text-[12px]">{file.name}</span>
                     </div>
@@ -46,6 +52,18 @@ export default function Home() {
             )}
           </div>
         </div>
+        {matchingFiles.length > 0 && (
+          <div className="p-3 bg-white rounded-md">
+            <h3>Feedback Survey</h3>
+            <p className="py-3">
+              Please provide feedback on your experience with this application by filling out the survey below.
+              If the survey is not appearing below, please use this link: <a href="https://forms.gle/KQiakv5j9Q83frJa7" target="_blank" className="underline">https://forms.gle/KQiakv5j9Q83frJa7</a>
+            </p>
+            <div className="h-80">
+              <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeQlnbvsr72qdba-F_VNMYZbczYNbRYFtBLPpf5pYR1h6rm_g/viewform?embedded=true" width="100%" height="100%">Loading…</iframe>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
