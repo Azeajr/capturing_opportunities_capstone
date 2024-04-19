@@ -21,10 +21,8 @@ import { DataAwsIamUser } from "@cdktf/provider-aws/lib/data-aws-iam-user";
 import { EcrRepository } from "@cdktf/provider-aws/lib/ecr-repository";
 // import { DataAwsS3Bucket } from "@cdktf/provider-aws/lib/data-aws-s3-bucket";
 
-
-const githubUsername = "username";
-const githubRepo = "repo";
-
+const githubUsername = "Azeajr";
+const githubRepo = "capturing_opportunities_capstone";
 
 class DockerStack extends TerraformStack {
   constructor(scope: Construct, name: string) {
@@ -178,10 +176,11 @@ class AwsStack extends TerraformStack {
             },
             Action: "sts:AssumeRoleWithWebIdentity",
             Condition: {
+              StringLike: {
+                "token.actions.githubusercontent.com:sub": `repo:${githubUsername}/${githubRepo}*`,
+              },
               StringEquals: {
                 "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                "token.actions.githubusercontent.com:sub":
-                  `repo:github.com/${githubUsername}/${githubRepo}`,
               },
             },
           },
