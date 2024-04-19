@@ -3,6 +3,7 @@
     "jupyter_lab/poc",
     "data",
     "flask_app",
-    "react_frontend"
+    "frontend",
+    "backend"
   ]
 }
