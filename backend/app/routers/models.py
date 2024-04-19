@@ -1,7 +1,8 @@
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
+from app.auth import verify_api_key
 from app.config import get_config
 
 config = get_config()
@@ -12,6 +13,7 @@ router = APIRouter(
     prefix="/models",
     tags=["models"],
     responses={404: {"description": "Not found"}},
+    dependencies=[Depends(verify_api_key)],
 )
 
 

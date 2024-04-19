@@ -2,9 +2,10 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import structlog
-from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
+from app.auth import verify_api_key
 from app.config import get_config
 from app.services.auto_encoder import AutoEncoder
 from app.services.base import MlABC
@@ -17,7 +18,7 @@ log = structlog.get_logger()
 router = APIRouter(
     prefix="/uploads",
     tags=["uploads"],
-    responses={404: {"description": "Not found"}},
+    dependencies=[Depends(verify_api_key)],
 )
 
 

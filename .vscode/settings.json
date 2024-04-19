@@ -1,3 +1,9 @@
 {
-  "conventionalCommits.scopes": ["jupyter_lab/poc", "data", "flask_app"]
+  "conventionalCommits.scopes": [
+    "jupyter_lab/poc",
+    "data",
+    "flask_app",
+    "frontend",
+    "backend"
+  ]
 }
