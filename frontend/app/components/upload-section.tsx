@@ -5,9 +5,8 @@ import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import LinearProgress from "@mui/material/LinearProgress";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
+import InfoIcon from '@mui/icons-material/Info';
+import Tooltip from '@mui/material/Tooltip';
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import ToggleButton from "@mui/material/ToggleButton";
@@ -234,37 +233,30 @@ export default function UploadSection(props: UploadSectionProps) {
       {isTraining ? (
         <div>
           <FormControl>
-            <FormLabel id="demo-controlled-radio-buttons-group">
-              Choose a model to train
-            </FormLabel>
+            <FormLabel id="demo-controlled-radio-buttons-group">Choose a model to train</FormLabel>
             <div className="flex flex-row">
-              {/* option 1 - radio button*/}
-              <RadioGroup
-                row
-                aria-labelledby="demo-controlled-radio-buttons-group"
-                name="controlled-radio-buttons-group"
+              <ToggleButtonGroup
+                color="primary"
                 value={selectedModel}
-                onChange={handleModelChange}
+                exclusive
+                onChange={handleToggleChange}
+                aria-label="Model"
               >
-                <FormControlLabel value="svm" control={<Radio />} label="SVM" />
-                <FormControlLabel
-                  value="auto_encoder"
-                  control={<Radio />}
-                  label="Auto encoder"
-                />
-              </RadioGroup>
-              {/* option 2 - toggle button*/}
-              {/* <ToggleButtonGroup
-                                color="primary"
-                                value={selectedModel}
-                                exclusive
-                                onChange={handleToggleChange}
-                                aria-label="Platform"
-                            >
-                                <ToggleButton value="svm">SVM</ToggleButton>
-                                <ToggleButton value="auto_encoder">Auto encoder</ToggleButton>
-                            </ToggleButtonGroup> */}
+                <ToggleButton value="svm">
+                  <span className="pr-2">SVM</span>
+                  <Tooltip title="A support vector machine (SVM) is a supervised machine learning algorithm that classifies data by finding an optimal line or hyperplane that maximizes the distance between each class in an N-dimensional space">
+                    <InfoIcon />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="auto_encoder">
+                  <span className="pr-2">Auto encoder</span>
+                  <Tooltip title="An autoencoder is a type of artificial neural network used to learn efficient codings of unlabeled data.">
+                    <InfoIcon />
+                  </Tooltip>
+                </ToggleButton>
+              </ToggleButtonGroup>
             </div>
+
           </FormControl>
         </div>
       ) : (
@@ -332,6 +324,6 @@ export default function UploadSection(props: UploadSectionProps) {
           );
         })}
       </div>
-    </div>
+    </div >
   );
 }
