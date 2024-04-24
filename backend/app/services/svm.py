@@ -1,6 +1,6 @@
 import pickle
-import uuid
 from pathlib import Path
+from uuid import uuid4
 
 import numpy as np
 import structlog
@@ -20,15 +20,24 @@ config = get_config()
 
 
 class SVM(MlABC):
-    def __init__(self, model_path: Path = None):
+    def __init__(self, session_id: str, model_path: Path = None):
         self.logger = structlog.get_logger()
+        self.session_id = session_id
         # Load MobileNetV3 pre-trained on ImageNet without the top layer
         self.model = tf.keras.applications.MobileNetV3Large(
             weights="imagenet", include_top=False
         )
 
         if model_path:
-            with open(config.MODELS_FOLDER / "svm" / model_path, "rb") as f:
+            self.logger.info(
+                "Loading SVM",
+                session_id=session_id,
+                model_path=model_path,
+                full_path=config.MODELS_FOLDER / session_id / "svm" / model_path,
+            )
+            with open(
+                config.MODELS_FOLDER / session_id / "svm" / model_path, "rb"
+            ) as f:
                 self.best_svm = pickle.load(f)
         else:
             self.best_svm = None
@@ -36,6 +45,8 @@ class SVM(MlABC):
         # Placeholder for the trained SVM model
 
     def process_training_images(self, img_path):
+        self.logger.info("Processing Training Images", img_path=img_path)
+
         img_dir_size = len(list(img_path.glob("*")))
         factor = (
             (max(min_training_size, 100) + img_dir_size - 1) // img_dir_size
@@ -97,14 +108,14 @@ class SVM(MlABC):
         self.best_svm = clf.best_estimator_
 
         # Save the best SVM model
-        model_id = uuid.uuid4()
-        path = config.MODELS_FOLDER / "svm" / str(model_id)
+        model_id = str(uuid4())
+        path = config.MODELS_FOLDER / self.session_id / "svm" / model_id
         path.mkdir(parents=True, exist_ok=True)
 
         with open(path / "svm.pkl", "wb") as f:
             pickle.dump(self.best_svm, f)
 
-        return Path("/svm") / str(model_id) / "svm.pkl"
+        return Path("/", self.session_id) / "svm" / model_id / "svm.pkl"
 
     def process_collection_images(self, img_path):
         # Convert single image path to a directory-like object for compatibility
