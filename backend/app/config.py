@@ -14,8 +14,6 @@ class CommonSettings(BaseSettings):
     ENV: str
     API_KEY: str = "api_secret_key"
     UPLOADS_FOLDER: Path = Path("temp", "uploads")
-    TRAINING_IMAGES_FOLDER: Path = UPLOADS_FOLDER / "training_images" / "raw"
-    IMAGE_COLLECTION_FOLDER: Path = UPLOADS_FOLDER / "image_collection"
     MODELS_FOLDER: Path = Path("temp", "models")
     MODEL: Models = Models.SVM
     LOG_LEVEL: str = "DEBUG"

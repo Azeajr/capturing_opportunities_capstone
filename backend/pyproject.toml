@@ -16,7 +16,6 @@ scikit-learn = "^1.4.1.post1"
 structlog = "^24.1.0"
 tensorflow = "^2.16.1"
 uvicorn = "^0.28.0"
-tensorflowjs = "^4.17.0"
 
 
 [tool.poetry.group.dev.dependencies]

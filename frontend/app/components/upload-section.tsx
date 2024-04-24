@@ -5,8 +5,8 @@ import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import LinearProgress from "@mui/material/LinearProgress";
-import InfoIcon from '@mui/icons-material/Info';
-import Tooltip from '@mui/material/Tooltip';
+import InfoIcon from "@mui/icons-material/Info";
+import Tooltip from "@mui/material/Tooltip";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import ToggleButton from "@mui/material/ToggleButton";
@@ -58,7 +58,7 @@ export default function UploadSection(props: UploadSectionProps) {
     event: React.MouseEvent<HTMLElement>,
     newAlignment: string
   ) => {
-    setModel(newAlignment);
+    if (newAlignment !== null) setModel(newAlignment);
   };
 
   useEffect(() => {
@@ -233,7 +233,9 @@ export default function UploadSection(props: UploadSectionProps) {
       {isTraining ? (
         <div>
           <FormControl>
-            <FormLabel id="demo-controlled-radio-buttons-group">Choose a model to train</FormLabel>
+            <FormLabel id="demo-controlled-radio-buttons-group">
+              Choose a model to train
+            </FormLabel>
             <div className="flex flex-row">
               <ToggleButtonGroup
                 color="primary"
@@ -256,7 +258,6 @@ export default function UploadSection(props: UploadSectionProps) {
                 </ToggleButton>
               </ToggleButtonGroup>
             </div>
-
           </FormControl>
         </div>
       ) : (
@@ -324,6 +325,6 @@ export default function UploadSection(props: UploadSectionProps) {
           );
         })}
       </div>
-    </div >
+    </div>
   );
 }

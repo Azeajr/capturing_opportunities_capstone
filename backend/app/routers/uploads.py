@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any, Iterator
+from uuid import uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
@@ -22,60 +23,31 @@ router = APIRouter(
 )
 
 
-if config.MODEL == "auto_encoder":
-    ml: MlABC = AutoEncoder()
-else:
-    ml: MlABC = SVM()
-
-
-@router.post("/training_images")
-async def upload_training_images(files: list[UploadFile], request: Request):
-    log.info("request", url=request.url, method=request.method, headers=request.headers)
-
-    for image in files:
-        image_path = config.TRAINING_IMAGES_FOLDER / image.filename
-
-        with open(image_path, "wb") as buffer:
-            buffer.write(await image.read())
-
-    model_path = ml.process_training_images(config.TRAINING_IMAGES_FOLDER)
-
-    return {
-        "data": {
-            "type": "modelTraining",
-            "attributes": {
-                "status": "completed",
-                "modelUuid": model_path.parent.name if model_path else None,
-                "modelApiEndpoint": model_path,
-            },
-        },
-        "meta": {
-            "message": "Model training completed successfully",
-        },
-    }
-
-
 @router.post("/training_images/{model_name}")
 async def upload_training_images_with_model_name(
     model_name: str, files: list[UploadFile], request: Request
 ):
+    session_id = str(uuid4())
     match model_name:
         case "auto_encoder":
-            model: MlABC = AutoEncoder()
+            model: MlABC = AutoEncoder(session_id=session_id)
         case "svm":
-            model: MlABC = SVM()
+            model: MlABC = SVM(session_id=session_id)
         case _:
             raise HTTPException(status_code=404, detail="Model not found")
 
     log.info("request", url=request.url, method=request.method, headers=request.headers)
 
+    upload_path = config.UPLOADS_FOLDER / session_id / "training_images" / "raw"
+    upload_path.mkdir(parents=True, exist_ok=True)
+
     for image in files:
-        image_path = config.TRAINING_IMAGES_FOLDER / image.filename
+        image_path = upload_path / image.filename
 
         with open(image_path, "wb") as buffer:
             buffer.write(await image.read())
 
-    model_path = model.process_training_images(config.TRAINING_IMAGES_FOLDER)
+    model_path = model.process_training_images(upload_path)
 
     return {
         "data": {
@@ -94,64 +66,36 @@ async def upload_training_images_with_model_name(
     }
 
 
-@router.post("/collection_images")
-# async def upload_collection_images(files: list[UploadFile], db: Session = Depends(get_db)):
-async def upload_collection_images(files: list[UploadFile]):
-    for image in files:
-        image_path = config.IMAGE_COLLECTION_FOLDER / image.filename
-
-        with open(image_path, "wb") as buffer:
-            buffer.write(await image.read())
-
-    scored_paths: Iterator[tuple[str, Any]] = ml.process_collection_images(
-        config.IMAGE_COLLECTION_FOLDER
-    )
-
-    scored_paths = list(scored_paths)
-
-    return {
-        "data": [
-            {
-                "type": "imageComparisonResults",
-                "attributes": {
-                    "imagePath": path,
-                    "score": score,
-                },
-            }
-            for path, score in scored_paths
-        ],
-        "meta": {
-            "totalResults": len(scored_paths),
-            "modelUsed": config.MODEL,
-            "message": "Image comparison completed successfully",
-        },
-        "links": {
-            "self": str(config.IMAGE_COLLECTION_FOLDER),
-        },
-    }
-
-
-@router.post("/collection_images/{model_name}/{model_path}/{filename}")
+@router.post("/collection_images/{session_id}/{model_name}/{model_path}/{filename}")
 # async def upload_collection_images(files: list[UploadFile], db: Session = Depends(get_db)):
 async def upload_collection_images_with_model_uuid(
-    model_name: str, model_path: Path, filename: Path, files: list[UploadFile]
+    session_id: str,
+    model_name: str,
+    model_path: Path,
+    filename: Path,
+    files: list[UploadFile],
 ):
     match model_name:
         case "auto_encoder":
-            model: MlABC = AutoEncoder(model_path=model_path / filename)
+            model: MlABC = AutoEncoder(
+                session_id=session_id, model_path=model_path / filename
+            )
         case "svm":
-            model: MlABC = SVM(model_path=model_path / filename)
+            model: MlABC = SVM(session_id=session_id, model_path=model_path / filename)
         case _:
             raise HTTPException(status_code=404, detail="Model not found")
 
+    upload_path = config.UPLOADS_FOLDER / session_id / "collection_images"
+    upload_path.mkdir(parents=True, exist_ok=True)
+
     for image in files:
-        image_path = config.IMAGE_COLLECTION_FOLDER / image.filename
+        image_path = upload_path / image.filename
 
         with open(image_path, "wb") as buffer:
             buffer.write(await image.read())
 
     scored_paths: Iterator[tuple[str, Any]] = model.process_collection_images(
-        config.IMAGE_COLLECTION_FOLDER
+        upload_path
     )
 
     scored_paths = list(scored_paths)
@@ -173,7 +117,7 @@ async def upload_collection_images_with_model_uuid(
             "message": "Image comparison completed successfully",
         },
         "links": {
-            "self": str(config.IMAGE_COLLECTION_FOLDER),
+            "self": str(upload_path),
         },
     }
 

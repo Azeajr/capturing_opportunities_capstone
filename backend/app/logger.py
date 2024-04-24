@@ -1,6 +1,8 @@
 import logging
 import sys
+
 import structlog
+
 from app.config import get_config
 
 config = get_config()
