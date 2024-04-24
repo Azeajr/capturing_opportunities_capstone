@@ -32,10 +32,11 @@ type UploadSectionProps = {
   apiEndpoint: string;
   sendMatchingFiles: (files: File[]) => void;
   setCollectionEndpoint: (endpoint: string) => void;
+  setSesstionId?: (sessionId: string) => void;
 };
 
 export default function UploadSection(props: UploadSectionProps) {
-  const { title, apiEndpoint, sendMatchingFiles, setCollectionEndpoint } =
+  const { title, apiEndpoint, sendMatchingFiles, setCollectionEndpoint, setSesstionId } =
     props;
   const [files, setFiles] = useState<File[]>([]);
   const [scoredFilePaths, setScoredFilePaths] = useState<
@@ -150,6 +151,7 @@ export default function UploadSection(props: UploadSectionProps) {
       if (isCollection) {
         setScoredFilePaths(responseJson.data);
         handleMatchingFiles(responseJson.data);
+        setSesstionId ? setSesstionId(responseJson.meta.sessionId) : null;
       }
 
       //   const response = await fetch(url, {

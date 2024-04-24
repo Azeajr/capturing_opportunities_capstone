@@ -12,12 +12,16 @@ export default function Home() {
   const trainingEndpoint = "/uploads/training_images";
   const [collectionEndpoint, setCollectionEndpoint] = useState<string>('/uploads/collection_images');
   const [matchingFiles, setMatchingFiles] = useState<File[]>([])
+  const [sessionId, setSessionId] = useState<string>('')
+  
 
   // function used in child component that will send back matching image files to display
   const sendMatchingFiles = (files: File[]) => {
     const topFiles = files.slice(0, 10)
     setMatchingFiles(topFiles);
   }
+
+  const setSesstionId = (sessionId: string) => setSessionId(sessionId)
 
   return (
     <main className="flex min-h-screen flex-col justify-between p-24">
@@ -30,8 +34,8 @@ export default function Home() {
         </div>
 
         <div className="flex flex-row gap-5">
-          <UploadSection title="Upload Training Images" apiEndpoint={trainingEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} />
-          <UploadSection title="Upload Image Collection" apiEndpoint={collectionEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} />
+          <UploadSection title="Upload Training Images" apiEndpoint={trainingEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} setSesstionId={setSesstionId} />
+          <UploadSection title="Upload Image Collection" apiEndpoint={collectionEndpoint} sendMatchingFiles={sendMatchingFiles} setCollectionEndpoint={setCollectionEndpoint} setSesstionId={setSesstionId} />
         </div>
         <div className="p-3 bg-white rounded-md">
           <h3>Matching Images</h3>
@@ -60,7 +64,7 @@ export default function Home() {
               If the survey is not appearing below, please use this link: <a href="https://forms.gle/KQiakv5j9Q83frJa7" target="_blank" className="underline">https://forms.gle/KQiakv5j9Q83frJa7</a>
             </p>
             <div className="h-80">
-              <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeQlnbvsr72qdba-F_VNMYZbczYNbRYFtBLPpf5pYR1h6rm_g/viewform?embedded=true" width="100%" height="100%">Loading…</iframe>
+              <iframe src={`https://docs.google.com/forms/d/e/1FAIpQLSeQlnbvsr72qdba-F_VNMYZbczYNbRYFtBLPpf5pYR1h6rm_g/viewform?usp=pp_url&entry.76857979=${sessionId}`} width="100%" height="100%">Loading…</iframe>
             </div>
           </div>
         )}
