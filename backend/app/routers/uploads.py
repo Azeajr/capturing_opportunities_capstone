@@ -3,7 +3,7 @@ from typing import Any, Iterator
 from uuid import uuid4
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 
 from app.auth import verify_api_key
@@ -25,7 +25,7 @@ router = APIRouter(
 
 @router.post("/training_images/{model_name}")
 async def upload_training_images_with_model_name(
-    model_name: str, files: list[UploadFile], request: Request
+    model_name: str, files: list[UploadFile], request: Request, response: Response
 ):
     session_id = str(uuid4())
     match model_name:
@@ -49,10 +49,13 @@ async def upload_training_images_with_model_name(
 
     model_path = model.process_training_images(upload_path)
 
+    response.headers["X-Session-Id"] = session_id
+    response.headers["X-Image-Count"] = str(len(files))
     return {
         "data": {
             "type": "modelTraining",
             "attributes": {
+                "sessionId": session_id,
                 "status": "completed",
                 "modelName": model_name,
                 "modelUuid": model_path.parent.name if model_path else None,
@@ -74,6 +77,7 @@ async def upload_collection_images_with_model_uuid(
     model_path: Path,
     filename: Path,
     files: list[UploadFile],
+    response: Response,
 ):
     match model_name:
         case "auto_encoder":
@@ -100,6 +104,9 @@ async def upload_collection_images_with_model_uuid(
 
     scored_paths = list(scored_paths)
 
+    response.headers["X-Session-Id"] = session_id
+    response.headers["X-Image-Count"] = str(len(files))
+
     return {
         "data": [
             {
@@ -112,6 +119,7 @@ async def upload_collection_images_with_model_uuid(
             for path, score in scored_paths
         ],
         "meta": {
+            "sessionId": session_id,
             "totalResults": len(scored_paths),
             "modelUsed": model_name,
             "message": "Image comparison completed successfully",

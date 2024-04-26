@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 
@@ -10,12 +11,14 @@ config = get_config()
 
 def write_to_file(file_path, event_dict):
     """Write the log entry to a file."""
+    if event_dict.get("analytics", False):
+        file_path = config.ANALYTICS_LOG_FILE
+    else:
+        file_path = config.LOG_FILE
+
     with open(file_path, "a", encoding="utf-8") as file:
-        file.write(event_dict + "\n")
+        file.write(json.dumps(event_dict, default=str) + "\n")
     return event_dict
-
-
-# boolean = sys.stdout.isatty()
 
 
 def setup_logging():
@@ -31,8 +34,8 @@ def setup_logging():
         output_processors = [structlog.dev.ConsoleRenderer(colors=True)]
     else:
         output_processors = [
-            structlog.processors.JSONRenderer(),
             lambda logger, name, event_dict: write_to_file(config.LOG_FILE, event_dict),
+            structlog.processors.JSONRenderer(),
         ]
 
     structlog.configure(

@@ -18,6 +18,7 @@ class CommonSettings(BaseSettings):
     MODEL: Models = Models.SVM
     LOG_LEVEL: str = "DEBUG"
     LOG_FILE: Path = Path("temp", "logs", "app.jsonl")
+    ANALYTICS_LOG_FILE: Path = Path("temp", "logs", "analytics.jsonl")
 
 
 class DevelopmentConfig(CommonSettings):

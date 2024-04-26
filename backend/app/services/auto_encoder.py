@@ -110,6 +110,14 @@ class AutoEncoder(MlABC):
         path.mkdir(parents=True, exist_ok=True)
         autoencoder.save(path / "autoencoder.keras")
 
+        self.logger.info(
+            "processed_training_images",
+            session_id=self.session_id,
+            model_name="auto_encoder",
+            augmented_image_count=desired_dataset_size,
+            analytics=True,
+        )
+
         return (
             Path("/", self.session_id) / "auto_encoder" / model_id / "autoencoder.keras"
         )
@@ -164,6 +172,14 @@ class AutoEncoder(MlABC):
         errors = np.array(reconstruction_errors)
         originals = np.array(original_images)
         reconstructs = np.array(reconstructed_images)
+
+        self.logger.info(
+            "process_collection_images",
+            session_id=self.session_id,
+            model_name="auto_encoder",
+            image_count=len(file_paths),
+            analytics=True,
+        )
 
         return zip(
             file_paths,
