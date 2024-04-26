@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_config
 from app.logger import setup_logging
-from app.routers import models, uploads
+from app.middleware import TimingAndLoggingMiddleware
+from app.routers import uploads
 
 config = get_config()
 
@@ -18,6 +19,7 @@ shutil.rmtree(config.MODELS_FOLDER, ignore_errors=True)
 config.UPLOADS_FOLDER.mkdir(parents=True, exist_ok=True)
 config.MODELS_FOLDER.mkdir(parents=True, exist_ok=True)
 config.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+config.ANALYTICS_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 setup_logging()
 
@@ -38,10 +40,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(TimingAndLoggingMiddleware)
 
 
 app.include_router(uploads.router)
-app.include_router(models.router)
 
 static_folder = Path(__file__).parent / "static"
 

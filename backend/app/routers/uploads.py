@@ -1,9 +1,10 @@
 from pathlib import Path
+import shutil
 from typing import Any, Iterator
 from uuid import uuid4
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 
 from app.auth import verify_api_key
@@ -25,7 +26,7 @@ router = APIRouter(
 
 @router.post("/training_images/{model_name}")
 async def upload_training_images_with_model_name(
-    model_name: str, files: list[UploadFile], request: Request
+    model_name: str, files: list[UploadFile], request: Request, response: Response
 ):
     session_id = str(uuid4())
     match model_name:
@@ -49,10 +50,13 @@ async def upload_training_images_with_model_name(
 
     model_path = model.process_training_images(upload_path)
 
+    response.headers["X-Session-Id"] = session_id
+    response.headers["X-Image-Count"] = str(len(files))
     return {
         "data": {
             "type": "modelTraining",
             "attributes": {
+                "sessionId": session_id,
                 "status": "completed",
                 "modelName": model_name,
                 "modelUuid": model_path.parent.name if model_path else None,
@@ -74,6 +78,7 @@ async def upload_collection_images_with_model_uuid(
     model_path: Path,
     filename: Path,
     files: list[UploadFile],
+    response: Response,
 ):
     match model_name:
         case "auto_encoder":
@@ -97,8 +102,13 @@ async def upload_collection_images_with_model_uuid(
     scored_paths: Iterator[tuple[str, Any]] = model.process_collection_images(
         upload_path
     )
+    shutil.rmtree(config.UPLOADS_FOLDER / session_id, ignore_errors=True)
+    shutil.rmtree(config.MODELS_FOLDER / session_id, ignore_errors=True)
 
     scored_paths = list(scored_paths)
+
+    response.headers["X-Session-Id"] = session_id
+    response.headers["X-Image-Count"] = str(len(files))
 
     return {
         "data": [
@@ -112,6 +122,7 @@ async def upload_collection_images_with_model_uuid(
             for path, score in scored_paths
         ],
         "meta": {
+            "sessionId": session_id,
             "totalResults": len(scored_paths),
             "modelUsed": model_name,
             "message": "Image comparison completed successfully",
@@ -120,19 +131,3 @@ async def upload_collection_images_with_model_uuid(
             "self": str(upload_path),
         },
     }
-
-
-@router.get("/{folder}/{filename}")
-async def get_image(folder: str, filename: str, request: Request):
-    log.info("request", url=request.url, method=request.method, headers=request.headers)
-    if folder == "training_images":
-        image_path = config.TRAINING_IMAGES_FOLDER / filename
-    elif folder == "collection_images":
-        image_path = config.IMAGE_COLLECTION_FOLDER / filename
-    else:
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    if not image_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return FileResponse(str(image_path))

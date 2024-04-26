@@ -42,8 +42,6 @@ class SVM(MlABC):
         else:
             self.best_svm = None
 
-        # Placeholder for the trained SVM model
-
     def process_training_images(self, img_path):
         self.logger.info("Processing Training Images", img_path=img_path)
 
@@ -94,16 +92,21 @@ class SVM(MlABC):
         features = self.model.predict(img_batch)
         features = features.reshape((features.shape[0], -1))  # Flatten the features
 
-        params = {
-            "nu": [0.01, 0.05, 0.1, 0.5],
-            "gamma": ["scale", "auto"],
-            "kernel": ["rbf"],
-        }
         svm = OneClassSVM()
         anomaly_scorer = make_scorer(
             lambda estimator, X: -estimator.decision_function(X).ravel()
         )
-        clf = GridSearchCV(svm, params, scoring=anomaly_scorer, cv=5, n_jobs=-1)
+        clf = GridSearchCV(
+            svm,
+            {
+                "nu": [0.01, 0.05, 0.1, 0.5],
+                "gamma": ["scale", "auto"],
+                "kernel": ["rbf"],
+            },
+            scoring=anomaly_scorer,
+            cv=5,
+            n_jobs=-1,
+        )
         clf.fit(features)
         self.best_svm = clf.best_estimator_
 
@@ -114,6 +117,14 @@ class SVM(MlABC):
 
         with open(path / "svm.pkl", "wb") as f:
             pickle.dump(self.best_svm, f)
+
+        self.logger.info(
+            "process_training_images",
+            session_id=self.session_id,
+            model_name="svm",
+            augmented_image_count=len(img_list),
+            analytics=True,
+        )
 
         return Path("/", self.session_id) / "svm" / model_id / "svm.pkl"
 
@@ -157,6 +168,14 @@ class SVM(MlABC):
             "Paths and Scores",
             paths=img_paths,
             scores=scores.tolist(),
+        )
+
+        self.logger.info(
+            "processed_collection_images",
+            session_id=self.session_id,
+            model_name="svm",
+            image_count=len(img_paths),
+            analytics=True,
         )
 
         return zip(img_paths, scores.tolist())
