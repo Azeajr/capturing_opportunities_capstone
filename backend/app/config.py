@@ -1,7 +1,10 @@
 import enum
 from pathlib import Path
+from uuid import uuid4
 
 from pydantic_settings import BaseSettings
+
+pod_uuid = str(uuid4())
 
 
 class Models(str, enum.Enum):
@@ -17,8 +20,8 @@ class CommonSettings(BaseSettings):
     MODELS_FOLDER: Path = Path("temp", "models")
     MODEL: Models = Models.SVM
     LOG_LEVEL: str = "DEBUG"
-    LOG_FILE: Path = Path("temp", "logs", "app.jsonl")
-    ANALYTICS_LOG_FILE: Path = Path("temp", "logs", "analytics.jsonl")
+    LOG_FILE: Path = Path("logs", pod_uuid, "app.jsonl")
+    ANALYTICS_LOG_FILE: Path = Path("logs", pod_uuid, "analytics.jsonl")
 
 
 class DevelopmentConfig(CommonSettings):

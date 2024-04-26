@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from typing import Any, Iterator
 from uuid import uuid4
 
@@ -101,6 +102,8 @@ async def upload_collection_images_with_model_uuid(
     scored_paths: Iterator[tuple[str, Any]] = model.process_collection_images(
         upload_path
     )
+    shutil.rmtree(config.UPLOADS_FOLDER / session_id, ignore_errors=True)
+    shutil.rmtree(config.MODELS_FOLDER / session_id, ignore_errors=True)
 
     scored_paths = list(scored_paths)
 
@@ -128,19 +131,3 @@ async def upload_collection_images_with_model_uuid(
             "self": str(upload_path),
         },
     }
-
-
-@router.get("/{folder}/{filename}")
-async def get_image(folder: str, filename: str, request: Request):
-    log.info("request", url=request.url, method=request.method, headers=request.headers)
-    if folder == "training_images":
-        image_path = config.TRAINING_IMAGES_FOLDER / filename
-    elif folder == "collection_images":
-        image_path = config.IMAGE_COLLECTION_FOLDER / filename
-    else:
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    if not image_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return FileResponse(str(image_path))

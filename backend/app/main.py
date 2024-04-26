@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_config
 from app.logger import setup_logging
 from app.middleware import TimingAndLoggingMiddleware
-from app.routers import models, uploads
+from app.routers import uploads
 
 config = get_config()
 
@@ -44,7 +44,6 @@ app.add_middleware(TimingAndLoggingMiddleware)
 
 
 app.include_router(uploads.router)
-app.include_router(models.router)
 
 static_folder = Path(__file__).parent / "static"
 
