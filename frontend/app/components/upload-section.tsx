@@ -30,14 +30,21 @@ const style = {
 type UploadSectionProps = {
   title: string;
   apiEndpoint: string;
+  model?: string;
   sendMatchingFiles: (files: File[]) => void;
   setCollectionEndpoint: (endpoint: string) => void;
   setSesstionId?: (sessionId: string) => void;
 };
 
 export default function UploadSection(props: UploadSectionProps) {
-  const { title, apiEndpoint, sendMatchingFiles, setCollectionEndpoint, setSesstionId } =
-    props;
+  const {
+    title,
+    apiEndpoint,
+    model,
+    sendMatchingFiles,
+    setCollectionEndpoint,
+    setSesstionId,
+  } = props;
   const [files, setFiles] = useState<File[]>([]);
   const [scoredFilePaths, setScoredFilePaths] = useState<
     CollectionData[] | null
@@ -46,10 +53,12 @@ export default function UploadSection(props: UploadSectionProps) {
   const [filesMessage, setFilesMessage] = useState<string>();
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [selectedModel, setModel] = useState<string>("svm");
+  const [selectedModel, setModel] = useState<string>(model ? model : "svm");
   const isTraining = apiEndpoint.includes("training_images");
   const isCollection = apiEndpoint.includes("collection_images");
   const buttonSpacing = files.length > 0 ? "justify-between" : "gap-10";
+  const isABTestingEnabled =
+    process.env.NEXT_PUBLIC_AB_TESTING_ENABLED === "true";
 
   const handleModelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setModel((event.target as HTMLInputElement).value);
@@ -232,7 +241,7 @@ export default function UploadSection(props: UploadSectionProps) {
           </div>
         )}
       </div>
-      {isTraining ? (
+      {isTraining && !isABTestingEnabled ? (
         <div>
           <FormControl>
             <FormLabel id="demo-controlled-radio-buttons-group">
