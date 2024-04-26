@@ -33,7 +33,7 @@ type UploadSectionProps = {
   model?: string;
   sendMatchingFiles: (files: File[]) => void;
   setCollectionEndpoint: (endpoint: string) => void;
-  setSesstionId?: (sessionId: string) => void;
+  setSessionId?: (sessionId: string) => void;
 };
 
 export default function UploadSection(props: UploadSectionProps) {
@@ -43,7 +43,7 @@ export default function UploadSection(props: UploadSectionProps) {
     model,
     sendMatchingFiles,
     setCollectionEndpoint,
-    setSesstionId,
+    setSessionId,
   } = props;
   const [files, setFiles] = useState<File[]>([]);
   const [scoredFilePaths, setScoredFilePaths] = useState<
@@ -160,7 +160,7 @@ export default function UploadSection(props: UploadSectionProps) {
       if (isCollection) {
         setScoredFilePaths(responseJson.data);
         handleMatchingFiles(responseJson.data);
-        setSesstionId ? setSesstionId(responseJson.meta.sessionId) : null;
+        setSessionId ? setSessionId(responseJson.meta.sessionId) : null;
       }
 
       //   const response = await fetch(url, {

@@ -54,7 +54,7 @@ export default function Home() {
             model={model}
             sendMatchingFiles={sendMatchingFiles}
             setCollectionEndpoint={setCollectionEndpoint}
-            setSesstionId={applySessionIdToForm}
+            setSessionId={applySessionIdToForm}
           />
           <UploadSection
             title="Upload Image Collection"
@@ -62,7 +62,7 @@ export default function Home() {
             model={model}
             sendMatchingFiles={sendMatchingFiles}
             setCollectionEndpoint={setCollectionEndpoint}
-            setSesstionId={applySessionIdToForm}
+            setSessionId={applySessionIdToForm}
           />
         </div>
         <div className="p-3 bg-white rounded-md">
