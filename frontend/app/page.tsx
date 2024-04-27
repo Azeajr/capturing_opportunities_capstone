@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import UploadSection from "./components/upload-section";
 
 // Import necessary CSS files
@@ -15,6 +15,16 @@ export default function Home() {
   );
   const [matchingFiles, setMatchingFiles] = useState<File[]>([]);
   const [sessionId, setSessionId] = useState<string>("");
+
+  useEffect(() => {
+    async function fetchData() {
+      const response = await fetch("/api/uploads/session");
+      const { data } = await response.json();
+      setSessionId(data.attributes.sessionId);
+    }
+    fetchData();
+  }, []);
+
   const isABTestingEnabled =
     process.env.NEXT_PUBLIC_AB_TESTING_ENABLED === "true";
   const model = isABTestingEnabled
@@ -53,16 +63,14 @@ export default function Home() {
             apiEndpoint={trainingEndpoint}
             model={model}
             sendMatchingFiles={sendMatchingFiles}
-            setCollectionEndpoint={setCollectionEndpoint}
-            setSessionId={applySessionIdToForm}
+            sessionId={sessionId}
           />
           <UploadSection
             title="Upload Image Collection"
             apiEndpoint={collectionEndpoint}
             model={model}
             sendMatchingFiles={sendMatchingFiles}
-            setCollectionEndpoint={setCollectionEndpoint}
-            setSessionId={applySessionIdToForm}
+            sessionId={sessionId}
           />
         </div>
         <div className="p-3 bg-white rounded-md">
