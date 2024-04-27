@@ -1,11 +1,9 @@
-from pathlib import Path
 import shutil
 from typing import Any, Iterator
 from uuid import uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse
 
 from app.auth import verify_api_key
 from app.config import get_config
@@ -24,11 +22,49 @@ router = APIRouter(
 )
 
 
-@router.post("/training_images/{model_name}")
+@router.get("/session")
+async def get_session_id():
+    return {"data": {"type": "sessionId", "attributes": {"sessionId": str(uuid4())}}}
+
+
+@router.post("/training_images/{session_id}")
 async def upload_training_images_with_model_name(
-    model_name: str, files: list[UploadFile], request: Request, response: Response
+    session_id: str,
+    file: UploadFile,
+    request: Request,
+    response: Response,
 ):
-    session_id = str(uuid4())
+    log.info("request", url=request.url, method=request.method, headers=request.headers)
+
+    upload_path = config.SESSIONS_FOLDER / session_id / "training_images" / "raw"
+    upload_path.mkdir(parents=True, exist_ok=True)
+
+    image_path = upload_path / file.filename
+    with open(image_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    response.headers["X-Session-Id"] = session_id
+    return {
+        "data": {
+            "type": "uploadResults",
+            "attributes": {
+                "sessionId": session_id,
+                "status": "completed",
+            },
+        },
+        "meta": {
+            "message": "Training image uploaded successfully",
+        },
+    }
+
+
+@router.get("/training_images/{session_id}/{model_name}")
+async def start_training_with_model_name(
+    session_id: str,
+    model_name: str,
+    request: Request,
+    response: Response,
+):
     match model_name:
         case "auto_encoder":
             model: MlABC = AutoEncoder(session_id=session_id)
@@ -39,76 +75,75 @@ async def upload_training_images_with_model_name(
 
     log.info("request", url=request.url, method=request.method, headers=request.headers)
 
-    upload_path = config.UPLOADS_FOLDER / session_id / "training_images" / "raw"
+    upload_path = config.SESSIONS_FOLDER / session_id / "training_images" / "raw"
     upload_path.mkdir(parents=True, exist_ok=True)
-
-    for image in files:
-        image_path = upload_path / image.filename
-
-        with open(image_path, "wb") as buffer:
-            buffer.write(await image.read())
 
     model_path = model.process_training_images(upload_path)
 
     response.headers["X-Session-Id"] = session_id
-    response.headers["X-Image-Count"] = str(len(files))
     return {
         "data": {
-            "type": "modelTraining",
+            "type": "trainingResults",
             "attributes": {
                 "sessionId": session_id,
                 "status": "completed",
-                "modelName": model_name,
-                "modelUuid": model_path.parent.name if model_path else None,
-                "modelApiEndpoint": f"/models{model_path}",
                 "collectionApiEndpoint": f"/uploads/collection_images{model_path}",
             },
         },
         "meta": {
-            "message": "Model training completed successfully",
+            "message": "Training image uploaded successfully",
         },
     }
 
 
-@router.post("/collection_images/{session_id}/{model_name}/{model_path}/{filename}")
-# async def upload_collection_images(files: list[UploadFile], db: Session = Depends(get_db)):
-async def upload_collection_images_with_model_uuid(
-    session_id: str,
-    model_name: str,
-    model_path: Path,
-    filename: Path,
-    files: list[UploadFile],
-    response: Response,
+@router.post("/collection_images/{session_id}")
+async def upload_collection_images(
+    session_id: str, file: UploadFile, response: Response
+):
+    upload_path = config.SESSIONS_FOLDER / session_id / "collection_images"
+    upload_path.mkdir(parents=True, exist_ok=True)
+
+    image_path = upload_path / file.filename
+    with open(image_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    response.headers["X-Session-Id"] = session_id
+    return {
+        "data": {
+            "type": "uploadResults",
+            "attributes": {
+                "sessionId": session_id,
+                "status": "completed",
+            },
+        },
+        "meta": {
+            "message": "Collection image uploaded successfully",
+        },
+    }
+
+
+@router.get("/collection_images/{session_id}/{model_name}")
+async def start_collection_image_processing_with_model_name(
+    session_id: str, model_name: str, response: Response
 ):
     match model_name:
         case "auto_encoder":
-            model: MlABC = AutoEncoder(
-                session_id=session_id, model_path=model_path / filename
-            )
+            model: MlABC = AutoEncoder(session_id=session_id, is_training=False)
         case "svm":
-            model: MlABC = SVM(session_id=session_id, model_path=model_path / filename)
+            model: MlABC = SVM(session_id=session_id, is_training=False)
         case _:
             raise HTTPException(status_code=404, detail="Model not found")
 
-    upload_path = config.UPLOADS_FOLDER / session_id / "collection_images"
-    upload_path.mkdir(parents=True, exist_ok=True)
-
-    for image in files:
-        image_path = upload_path / image.filename
-
-        with open(image_path, "wb") as buffer:
-            buffer.write(await image.read())
-
+    upload_path = config.SESSIONS_FOLDER / session_id / "collection_images"
     scored_paths: Iterator[tuple[str, Any]] = model.process_collection_images(
         upload_path
     )
-    shutil.rmtree(config.UPLOADS_FOLDER / session_id, ignore_errors=True)
-    shutil.rmtree(config.MODELS_FOLDER / session_id, ignore_errors=True)
+    shutil.rmtree(config.SESSIONS_FOLDER / session_id, ignore_errors=True)
 
     scored_paths = list(scored_paths)
 
     response.headers["X-Session-Id"] = session_id
-    response.headers["X-Image-Count"] = str(len(files))
+    response.headers["X-Image-Count"] = str(len(scored_paths))
 
     return {
         "data": [

@@ -23,28 +23,20 @@ DESIRED_DATASET_SIZE = 100
 
 
 class AutoEncoder(MlABC):
-    def __init__(self, session_id: str, model_path: Path = None):
+    def __init__(self, session_id: str, is_training: bool = True):
         self.logger = structlog.get_logger()
         self.session_id = session_id
-        self.model_path = model_path
 
-        if model_path:
-            self.full_model_path = (
-                config.MODELS_FOLDER / session_id / "auto_encoder" / model_path
-            )
-
-            self.logger.info(
-                "Loading AutoEncoder",
-                session_id=session_id,
-                model_path=model_path,
-                full_path=(
-                    config.MODELS_FOLDER / session_id / "auto_encoder" / model_path
-                ),
-            )
-
-            self.autoencoder = keras.models.load_model(self.full_model_path)
-        else:
+        if is_training:
             self.autoencoder = None
+
+        else:
+            self.autoencoder = keras.models.load_model(
+                config.SESSIONS_FOLDER
+                / session_id
+                / "auto_encoder"
+                / "autoencoder.keras"
+            )
 
     def process_training_images(self, img_path):
         self.logger.info("Processing Training Images", img_path=img_path)
@@ -105,8 +97,7 @@ class AutoEncoder(MlABC):
 
         self.autoencoder = autoencoder
 
-        model_id = str(uuid4())
-        path = config.MODELS_FOLDER / self.session_id / "auto_encoder" / model_id
+        path = config.SESSIONS_FOLDER / self.session_id / "auto_encoder"
         path.mkdir(parents=True, exist_ok=True)
         autoencoder.save(path / "autoencoder.keras")
 
@@ -118,9 +109,7 @@ class AutoEncoder(MlABC):
             analytics=True,
         )
 
-        return (
-            Path("/", self.session_id) / "auto_encoder" / model_id / "autoencoder.keras"
-        )
+        return Path("/", self.session_id) / "auto_encoder" / "autoencoder.keras"
 
     def process_collection_images(self, img_path):
         if not self.autoencoder:

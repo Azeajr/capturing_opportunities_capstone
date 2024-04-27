@@ -20,7 +20,7 @@ config = get_config()
 
 
 class SVM(MlABC):
-    def __init__(self, session_id: str, model_path: Path = None):
+    def __init__(self, session_id: str, is_training: bool = True):
         self.logger = structlog.get_logger()
         self.session_id = session_id
         # Load MobileNetV3 pre-trained on ImageNet without the top layer
@@ -28,19 +28,13 @@ class SVM(MlABC):
             weights="imagenet", include_top=False
         )
 
-        if model_path:
-            self.logger.info(
-                "Loading SVM",
-                session_id=session_id,
-                model_path=model_path,
-                full_path=config.MODELS_FOLDER / session_id / "svm" / model_path,
-            )
+        if is_training:
+            self.best_svm = None
+        else:
             with open(
-                config.MODELS_FOLDER / session_id / "svm" / model_path, "rb"
+                config.SESSIONS_FOLDER / session_id / "svm" / "svm.pkl", "rb"
             ) as f:
                 self.best_svm = pickle.load(f)
-        else:
-            self.best_svm = None
 
     def process_training_images(self, img_path):
         self.logger.info("Processing Training Images", img_path=img_path)
@@ -111,8 +105,7 @@ class SVM(MlABC):
         self.best_svm = clf.best_estimator_
 
         # Save the best SVM model
-        model_id = str(uuid4())
-        path = config.MODELS_FOLDER / self.session_id / "svm" / model_id
+        path = config.SESSIONS_FOLDER / self.session_id / "svm"
         path.mkdir(parents=True, exist_ok=True)
 
         with open(path / "svm.pkl", "wb") as f:
@@ -126,7 +119,7 @@ class SVM(MlABC):
             analytics=True,
         )
 
-        return Path("/", self.session_id) / "svm" / model_id / "svm.pkl"
+        return Path("/", self.session_id) / "svm" / "svm.pkl"
 
     def process_collection_images(self, img_path):
         # Convert single image path to a directory-like object for compatibility
