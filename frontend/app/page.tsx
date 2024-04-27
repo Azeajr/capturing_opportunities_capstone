@@ -55,6 +55,17 @@ export default function Home() {
             collection of images that the machine-learning model will sort
             accordingly and display the top 10 matching images.
           </p>
+          <p className="py-3">
+            If you do not have any images to upload, you can download a sample
+            dataset from this link:{" "}
+            <a
+              href="https://github.com/Azeajr/capturing_opportunities_capstone/raw/main/data/testing_data/wildlife.zip"
+              download
+              className="underline"
+            >
+              Sample Dataset
+            </a>
+          </p>
         </div>
 
         <div className="flex flex-row gap-5">
