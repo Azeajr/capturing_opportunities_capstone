@@ -14,10 +14,10 @@ from app.routers import uploads
 config = get_config()
 
 
-shutil.rmtree(config.UPLOADS_FOLDER, ignore_errors=True)
-shutil.rmtree(config.MODELS_FOLDER, ignore_errors=True)
-config.UPLOADS_FOLDER.mkdir(parents=True, exist_ok=True)
-config.MODELS_FOLDER.mkdir(parents=True, exist_ok=True)
+shutil.rmtree(config.SESSIONS_FOLDER, ignore_errors=True)
+
+config.SESSIONS_FOLDER.mkdir(parents=True, exist_ok=True)
+
 config.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 config.ANALYTICS_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 

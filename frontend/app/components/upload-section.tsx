@@ -32,19 +32,11 @@ type UploadSectionProps = {
   apiEndpoint: string;
   model?: string;
   sendMatchingFiles: (files: File[]) => void;
-  setCollectionEndpoint: (endpoint: string) => void;
-  setSessionId?: (sessionId: string) => void;
+  sessionId: string;
 };
 
 export default function UploadSection(props: UploadSectionProps) {
-  const {
-    title,
-    apiEndpoint,
-    model,
-    sendMatchingFiles,
-    setCollectionEndpoint,
-    setSessionId,
-  } = props;
+  const { title, apiEndpoint, model, sendMatchingFiles, sessionId } = props;
   const [files, setFiles] = useState<File[]>([]);
   const [scoredFilePaths, setScoredFilePaths] = useState<
     CollectionData[] | null
@@ -90,6 +82,12 @@ export default function UploadSection(props: UploadSectionProps) {
     const inputFiles = event.target.files;
 
     if (inputFiles) {
+      // check if the files are too large
+      if (Array.from(inputFiles).some((file) => file.size > 10_000_000)) {
+        setMessage("File size too large. Please upload files under 10MB.");
+        return;
+      }
+
       setFiles([...files, ...Array.from(inputFiles)]);
     }
   };
@@ -111,7 +109,6 @@ export default function UploadSection(props: UploadSectionProps) {
       files.map((file) => {
         if (d.attributes.imagePath === file.name) {
           sortedFiles.push(file);
-          // console.log('FILE', file);
         }
       });
     });
@@ -131,61 +128,51 @@ export default function UploadSection(props: UploadSectionProps) {
       return;
     }
 
-    const formData = new FormData();
-
-    files.forEach((file) => {
-      // formData.append(api_endpoint.split("/").at(-1)!, file);
-      formData.append("files", file);
-    });
-
     try {
-      // const url = isTraining ? `${host}${apiEndpoint}/${selectedModel}` : `${host}${apiEndpoint}`
-      const url = isTraining
-        ? `/api${apiEndpoint}/${selectedModel}`
-        : `/api${apiEndpoint}`;
+      let url = `/api${apiEndpoint}/${sessionId}`;
+
+      console.log("files", files);
+
+      // for (const file of files) {
+      //   const formData = new FormData();
+      //   formData.append("file", file);
+      //   const response = await fetch(url, {
+      //     method: "POST",
+      //     body: formData,
+      //   });
+      //   const responseJson = await response.json();
+      //   console.log("data", responseJson);
+      // }
+
+      await Promise.all(
+        files.map(async (file) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          const response = await fetch(url, {
+            method: "POST",
+            body: formData,
+          });
+          const responseJson = await response.json();
+          console.log("data", responseJson);
+        })
+      );
+
+      url = `/api${apiEndpoint}/${sessionId}/${selectedModel}`;
+
       const response = await fetch(url, {
-        method: "POST",
-        body: formData,
+        method: "GET",
       });
 
       const responseJson = await response.json();
 
       console.log("data", responseJson);
       setMessage(responseJson.meta.message);
-      if (isTraining && responseJson.data.attributes.collectionApiEndpoint) {
-        setCollectionEndpoint(
-          responseJson.data.attributes.collectionApiEndpoint
-        );
-      }
+
       if (isCollection) {
         setScoredFilePaths(responseJson.data);
         handleMatchingFiles(responseJson.data);
-        setSessionId ? setSessionId(responseJson.meta.sessionId) : null;
       }
 
-      //   const response = await fetch(url, {
-      //     method: "POST",
-      //     body: formData,
-      //   });
-      //   const responseJson = await response.json();
-
-      //   console.log("data", responseJson);
-      //   setMessage(responseJson.meta.message);
-      //   if (isTraining && responseJson.data.attributes.collectionApiEndpoint) {
-      //     setCollectionEndpoint(
-      //       responseJson.data.attributes.collectionApiEndpoint
-      //     );
-      //   }
-      //   if (isCollection) {
-      //     setScoredFilePaths(responseJson.data);
-      //     handleMatchingFiles(responseJson.data);
-      //   }
-
-      //   if (!response.ok) {
-      //     throw new Error(`Error: ${response.statusText}`);
-      //   }
-
-      // const data = await response.json();
       setIsLoading(false);
     } catch (error) {
       console.error("Upload failed:", error);

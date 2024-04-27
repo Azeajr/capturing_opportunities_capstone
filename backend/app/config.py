@@ -16,8 +16,7 @@ class CommonSettings(BaseSettings):
     APP_NAME: str = "Capture Opportunities"
     ENV: str
     API_KEY: str = "api_secret_key"
-    UPLOADS_FOLDER: Path = Path("temp", "uploads")
-    MODELS_FOLDER: Path = Path("temp", "models")
+    SESSIONS_FOLDER: Path = Path("temp", "sessions")
     MODEL: Models = Models.SVM
     LOG_LEVEL: str = "DEBUG"
     LOG_FILE: Path = Path("logs", pod_uuid, "app.jsonl")
