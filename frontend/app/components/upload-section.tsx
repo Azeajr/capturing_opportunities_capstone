@@ -31,12 +31,14 @@ type UploadSectionProps = {
   title: string;
   apiEndpoint: string;
   model?: string;
+  enableUpload?: boolean;
+  setEnableCollectionUpload?: () => void;
   sendMatchingFiles: (files: File[]) => void;
   sessionId: string;
 };
 
 export default function UploadSection(props: UploadSectionProps) {
-  const { title, apiEndpoint, model, sendMatchingFiles, sessionId } = props;
+  const { title, apiEndpoint, model, enableUpload, setEnableCollectionUpload, sendMatchingFiles, sessionId } = props;
   const [files, setFiles] = useState<File[]>([]);
   const [scoredFilePaths, setScoredFilePaths] = useState<
     CollectionData[] | null
@@ -168,6 +170,10 @@ export default function UploadSection(props: UploadSectionProps) {
       console.log("data", responseJson);
       setMessage(responseJson.meta.message);
 
+      if (isTraining && setEnableCollectionUpload) {
+        setEnableCollectionUpload();
+      }
+
       if (isCollection) {
         setScoredFilePaths(responseJson.data);
         handleMatchingFiles(responseJson.data);
@@ -268,6 +274,7 @@ export default function UploadSection(props: UploadSectionProps) {
           role={undefined}
           variant="contained"
           tabIndex={-1}
+          disabled={isCollection ? !enableUpload : false}
         >
           Choose files
           <input
@@ -291,6 +298,7 @@ export default function UploadSection(props: UploadSectionProps) {
             tabIndex={-1}
             startIcon={<CloudUploadIcon />}
             className="align-right"
+            disabled={isCollection ? !enableUpload : false}
           >
             Upload Files
           </Button>

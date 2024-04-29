@@ -10,9 +10,8 @@ import "@fontsource/roboto/700.css";
 
 export default function Home() {
   const trainingEndpoint = "/uploads/training_images";
-  const [collectionEndpoint, setCollectionEndpoint] = useState<string>(
-    "/uploads/collection_images"
-  );
+  const collectionEndpoint = "/uploads/collection_images";
+  const [isModelTrained, setModelTrained] = useState<boolean>(false);
   const [matchingFiles, setMatchingFiles] = useState<File[]>([]);
   const [sessionId, setSessionId] = useState<string>("");
 
@@ -32,6 +31,8 @@ export default function Home() {
       ? "svm"
       : "auto_encoder"
     : undefined;
+
+  const enableCollectionUpload = () => setModelTrained(true);
 
   // function used in child component that will send back matching image files to display
   const sendMatchingFiles = (files: File[]) => {
@@ -73,6 +74,7 @@ export default function Home() {
             title="Upload Training Images"
             apiEndpoint={trainingEndpoint}
             model={model}
+            setEnableCollectionUpload={enableCollectionUpload}
             sendMatchingFiles={sendMatchingFiles}
             sessionId={sessionId}
           />
@@ -80,6 +82,7 @@ export default function Home() {
             title="Upload Image Collection"
             apiEndpoint={collectionEndpoint}
             model={model}
+            enableUpload={isModelTrained}
             sendMatchingFiles={sendMatchingFiles}
             sessionId={sessionId}
           />
