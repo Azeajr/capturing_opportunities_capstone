@@ -123,13 +123,14 @@ class SVM(MlABC):
 
     def process_collection_images(self, img_path):
         # Convert single image path to a directory-like object for compatibility
+        self.logger.info("Processing Collection Images", img_path=img_path)
 
         if not self.best_svm:
             raise ValueError("SVM model not loaded")
 
         img_paths: list[Path] = []
         img_list = []
-        for path in img_path.glob("*.png"):
+        for path in img_path.glob("*"):
             try:
                 # Load image and preprocess it for MobileNetV3
                 img = tf.keras.preprocessing.image.load_img(
@@ -147,6 +148,7 @@ class SVM(MlABC):
 
         # Ensure that img_batch has a batch dimension
         img_batch = np.stack(img_list, axis=0) if img_list else np.array([])
+        self.logger.info("Length of collection images", length=len(img_list))
 
         # Extract features using MobileNetV3
         features = self.model.predict(img_batch)
