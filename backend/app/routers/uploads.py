@@ -78,7 +78,7 @@ async def start_training_with_model_name(
     upload_path = config.SESSIONS_FOLDER / session_id / "training_images" / "raw"
     upload_path.mkdir(parents=True, exist_ok=True)
 
-    model_path = model.process_training_images(upload_path)
+    model_path = await model.process_training_images(upload_path)
 
     response.headers["X-Session-Id"] = session_id
     return {
@@ -135,7 +135,7 @@ async def start_collection_image_processing_with_model_name(
             raise HTTPException(status_code=404, detail="Model not found")
 
     upload_path = config.SESSIONS_FOLDER / session_id / "collection_images"
-    scored_paths: Iterator[tuple[str, Any]] = model.process_collection_images(
+    scored_paths: Iterator[tuple[str, Any]] = await model.process_collection_images(
         upload_path
     )
     shutil.rmtree(config.SESSIONS_FOLDER / session_id, ignore_errors=True)

@@ -36,7 +36,7 @@ class SVM(MlABC):
             ) as f:
                 self.best_svm = pickle.load(f)
 
-    def process_training_images(self, img_path):
+    async def process_training_images(self, img_path):
         self.logger.info("Processing Training Images", img_path=img_path)
 
         img_dir_size = len(list(img_path.glob("*")))
@@ -121,7 +121,7 @@ class SVM(MlABC):
 
         return Path("/", self.session_id) / "svm" / "svm.pkl"
 
-    def process_collection_images(self, img_path):
+    async def process_collection_images(self, img_path):
         # Convert single image path to a directory-like object for compatibility
         self.logger.info("Processing Collection Images", img_path=img_path)
 
