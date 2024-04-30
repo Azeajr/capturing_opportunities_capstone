@@ -18,9 +18,6 @@ shutil.rmtree(config.SESSIONS_FOLDER, ignore_errors=True)
 
 config.SESSIONS_FOLDER.mkdir(parents=True, exist_ok=True)
 
-config.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-config.ANALYTICS_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-
 setup_logging()
 
 
