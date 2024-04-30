@@ -163,7 +163,7 @@ class AutoEncoder(MlABC):
         reconstructs = np.array(reconstructed_images)
 
         self.logger.info(
-            "process_collection_images",
+            "processed_collection_images",
             session_id=self.session_id,
             model_name="auto_encoder",
             image_count=len(file_paths),

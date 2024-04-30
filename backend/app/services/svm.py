@@ -112,7 +112,7 @@ class SVM(MlABC):
             pickle.dump(self.best_svm, f)
 
         self.logger.info(
-            "process_training_images",
+            "processed_training_images",
             session_id=self.session_id,
             model_name="svm",
             augmented_image_count=len(img_list),
