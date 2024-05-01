@@ -36,7 +36,7 @@ class SVM(MlABC):
             ) as f:
                 self.best_svm = pickle.load(f)
 
-    def process_training_images(self, img_path):
+    async def process_training_images(self, img_path):
         self.logger.info("Processing Training Images", img_path=img_path)
 
         img_dir_size = len(list(img_path.glob("*")))
@@ -90,15 +90,19 @@ class SVM(MlABC):
         anomaly_scorer = make_scorer(
             lambda estimator, X: -estimator.decision_function(X).ravel()
         )
+        # Perform grid search to find the best hyperparameters
+        # This will search 3*2*1 combinations of hyperparameters
+        params_grid = {
+            "nu": [0.01, 0.05, 0.1, 0.5],
+            "gamma": ["scale", "auto"],
+            "kernel": ["rbf"],
+        }
+
         clf = GridSearchCV(
             svm,
-            {
-                "nu": [0.01, 0.05, 0.1, 0.5],
-                "gamma": ["scale", "auto"],
-                "kernel": ["rbf"],
-            },
+            param_grid=params_grid,
             scoring=anomaly_scorer,
-            cv=5,
+            cv=5, # 5-fold cross-validation
             n_jobs=-1,
         )
         clf.fit(features)
@@ -112,7 +116,7 @@ class SVM(MlABC):
             pickle.dump(self.best_svm, f)
 
         self.logger.info(
-            "process_training_images",
+            "processed_training_images",
             session_id=self.session_id,
             model_name="svm",
             augmented_image_count=len(img_list),
@@ -121,7 +125,7 @@ class SVM(MlABC):
 
         return Path("/", self.session_id) / "svm" / "svm.pkl"
 
-    def process_collection_images(self, img_path):
+    async def process_collection_images(self, img_path):
         # Convert single image path to a directory-like object for compatibility
         self.logger.info("Processing Collection Images", img_path=img_path)
 

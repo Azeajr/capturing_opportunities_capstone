@@ -38,7 +38,7 @@ class AutoEncoder(MlABC):
                 / "autoencoder.keras"
             )
 
-    def process_training_images(self, img_path):
+    async def process_training_images(self, img_path):
         self.logger.info("Processing Training Images", img_path=img_path)
 
         img_path = img_path.parent
@@ -111,7 +111,7 @@ class AutoEncoder(MlABC):
 
         return Path("/", self.session_id) / "auto_encoder" / "autoencoder.keras"
 
-    def process_collection_images(self, img_path):
+    async def process_collection_images(self, img_path):
         if not self.autoencoder:
             raise ValueError("Autoencoder model not loaded")
 
@@ -163,7 +163,7 @@ class AutoEncoder(MlABC):
         reconstructs = np.array(reconstructed_images)
 
         self.logger.info(
-            "process_collection_images",
+            "processed_collection_images",
             session_id=self.session_id,
             model_name="auto_encoder",
             image_count=len(file_paths),
