@@ -90,15 +90,19 @@ class SVM(MlABC):
         anomaly_scorer = make_scorer(
             lambda estimator, X: -estimator.decision_function(X).ravel()
         )
+        # Perform grid search to find the best hyperparameters
+        # This will search 3*2*1 combinations of hyperparameters
+        params_grid = {
+            "nu": [0.01, 0.05, 0.1, 0.5],
+            "gamma": ["scale", "auto"],
+            "kernel": ["rbf"],
+        }
+
         clf = GridSearchCV(
             svm,
-            {
-                "nu": [0.01, 0.05, 0.1, 0.5],
-                "gamma": ["scale", "auto"],
-                "kernel": ["rbf"],
-            },
+            param_grid=params_grid,
             scoring=anomaly_scorer,
-            cv=5,
+            cv=5, # 5-fold cross-validation
             n_jobs=-1,
         )
         clf.fit(features)
