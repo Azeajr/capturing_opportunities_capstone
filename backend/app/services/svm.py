@@ -1,3 +1,4 @@
+import math
 import pickle
 from pathlib import Path
 
@@ -7,13 +8,16 @@ import tensorflow as tf
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import OneClassSVM
+import keras
 
 from app.config import get_config
 from app.services.base import MlABC
 
-# Minimum number of training images required to train the SVM
-min_training_size = 100
 config = get_config()
+
+TARGET_SIZE = (224, 224)
+BATCH_SIZE = 32
+DESIRED_TRAIN_SIZE = 300
 
 
 class SVM(MlABC):
@@ -21,8 +25,8 @@ class SVM(MlABC):
         # Initialize logging
         self.logger = structlog.get_logger()
         self.session_id = session_id
-        # Initialize the MobileNetV3 model without the classification layer, pre-trained on ImageNet
-        self.model = tf.keras.applications.MobileNetV3Large(
+        # Load MobileNetV3 pre-trained on ImageNet without the top layer
+        self.model = keras.applications.MobileNetV3Large(
             weights="imagenet", include_top=False
         )
 
@@ -38,68 +42,60 @@ class SVM(MlABC):
     async def process_training_images(self, img_path):
         # Log the start of the image processing
         self.logger.info("Processing Training Images", img_path=img_path)
-        # Calculate how many times to augment the dataset to ensure sufficient training size
-        img_dir_size = len(list(img_path.glob("*")))
-        factor = (
-            (max(min_training_size, 100) + img_dir_size - 1) // img_dir_size
-            if img_dir_size > 0
-            else 0
-        )
-        img_list = []
 
-        # Define data augmentation parameters to increase dataset diversity
-        data_augmentation = tf.keras.preprocessing.image.ImageDataGenerator(
-            rotation_range=20,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            shear_range=0.2,
-            zoom_range=0.2,
-            horizontal_flip=True,
-            fill_mode="nearest",
+        train_ds = keras.preprocessing.image_dataset_from_directory(
+            img_path,
+            labels=None,
+            image_size=TARGET_SIZE,
+            batch_size=BATCH_SIZE,
         )
 
-        for path in img_path.glob("*"):
-            try:
-                # Load and preprocess images for MobileNetV3
-                img = tf.keras.preprocessing.image.load_img(
-                    path, target_size=(224, 224)
-                )
-                img_array = tf.keras.preprocessing.image.img_to_array(img)
-                img_array = tf.keras.applications.mobilenet_v3.preprocess_input(
-                    img_array
-                )
-                # Augment images and add to list
-                for _ in range(factor - 1):
-                    img_list.append(data_augmentation.random_transform(img_array))
-                img_list.append(img_array)
-            except Exception as e:
-                print(f"Error processing image {path}: {e}")
+        img_count = len(train_ds.file_paths)
+        factor = math.ceil(DESIRED_TRAIN_SIZE / img_count)
 
-        if not img_list:
-            return None
+        data_augmentation = keras.Sequential(
+            [
+                keras.layers.Rescaling(1.0 / 255),
+                keras.layers.RandomRotation(0.1),
+                keras.layers.RandomTranslation(0.1, 0.1),
+                keras.layers.RandomZoom(0.1),
+                keras.layers.RandomFlip(),
+                keras.layers.Resizing(*TARGET_SIZE),
+            ]
+        )
 
-        self.logger.info("Length of training images", length=len(img_list))
-        # Ensure that img_batch has a batch dimension
-        img_batch = np.stack(img_list, axis=0)
-        # Use the MobileNetV3 to extract features from images
-        features = self.model.predict(img_batch)
+        augmented_ds = train_ds.repeat(factor).map(
+            lambda x: (
+                data_augmentation(x, training=True),
+                data_augmentation(x, training=True),
+            ),
+            num_parallel_calls=tf.data.AUTOTUNE,
+        )
+
+        features = self.model.predict(augmented_ds)
         features = features.reshape((features.shape[0], -1))  # Flatten the features
 
         svm = OneClassSVM()
         anomaly_scorer = make_scorer(
             lambda estimator, X: -estimator.decision_function(X).ravel()
         )
-        # Set up parameters for grid search to optimize SVM
         params_grid = {
             "nu": [0.01, 0.05, 0.1, 0.5],
             "gamma": ["scale", "auto"],
             "kernel": ["rbf"],
         }
-        clf = GridSearchCV(
-            svm, param_grid=params_grid, scoring=anomaly_scorer, cv=5, n_jobs=-1
+
+        grid_search = GridSearchCV(
+            svm,
+            param_grid=params_grid,
+            scoring=anomaly_scorer,
+            cv=5,
+            n_jobs=-1,
         )
-        clf.fit(features)
-        self.best_svm = clf.best_estimator_
+
+        grid_search.fit(features)
+
+        self.best_svm = grid_search.best_estimator_
 
         # Save the trained SVM model
         path = config.SESSIONS_FOLDER / self.session_id / "svm"
@@ -111,7 +107,7 @@ class SVM(MlABC):
             "processed_training_images",
             session_id=self.session_id,
             model_name="svm",
-            augmented_image_count=len(img_list),
+            augmented_image_count=img_count * factor,
             analytics=True,
         )
 
@@ -124,44 +120,42 @@ class SVM(MlABC):
         if not self.best_svm:
             raise ValueError("SVM model not loaded")
 
-        img_paths = []
-        img_list = []
-        for path in img_path.glob("*"):
-            try:
-                # Load and preprocess images
-                img = tf.keras.preprocessing.image.load_img(
-                    path, target_size=(224, 224)
-                )
-                img_array = tf.keras.preprocessing.image.img_to_array(img)
-                img_array = tf.keras.applications.mobilenet_v3.preprocess_input(
-                    img_array
-                )
-                img_paths.append(path)
-                img_list.append(img_array)
-            except Exception as e:
-                print(f"Error processing image {path}: {e}")
-
-        # Ensure that img_batch has a batch dimension
-        img_batch = np.stack(img_list, axis=0) if img_list else np.array([])
-        self.logger.info("Length of collection images", length=len(img_list))
-        # Extract features using MobileNetV3
-        features = self.model.predict(img_batch)
-        features = features.reshape((features.shape[0], -1))  # Flatten the features
-        scores = self.best_svm.decision_function(features)
-        img_paths = [p.name for p in img_paths]
-
-        self.logger.info(
-            "Paths and Scores",
-            paths=img_paths,
-            scores=scores.tolist(),
+        collection_ds: tf.data.Dataset = (
+            keras.preprocessing.image_dataset_from_directory(
+                img_path,
+                labels=None,
+                shuffle=False,
+                image_size=TARGET_SIZE,
+                batch_size=BATCH_SIZE,
+            )
         )
+
+        file_paths = [Path(path).name for path in collection_ds.file_paths]
+
+        data_augmentation = keras.Sequential(
+            [
+                keras.layers.Rescaling(1.0 / 255),
+                keras.layers.Resizing(*TARGET_SIZE),
+            ]
+        )
+
+        collection_ds = collection_ds.map(
+            data_augmentation, num_parallel_calls=tf.data.AUTOTUNE
+        )
+
+        features = self.model.predict(collection_ds)
+        features = features.reshape((features.shape[0], -1))
+
+        errors = self.best_svm.decision_function(features)
+
+        self.logger.info("Paths and Scores", paths=file_paths, scores=errors)
 
         self.logger.info(
             "processed_collection_images",
             session_id=self.session_id,
             model_name="svm",
-            image_count=len(img_paths),
+            image_count=len(file_paths),
             analytics=True,
         )
 
-        return zip(img_paths, scores.tolist())
+        return zip(file_paths, errors)
