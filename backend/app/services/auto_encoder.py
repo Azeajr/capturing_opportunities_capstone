@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 import keras
 import numpy as np
@@ -11,11 +12,9 @@ from app.services.base import MlABC
 # Retrieve application configuration
 config = get_config()
 
-# Predefined settings for image processing
-ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
 TARGET_SIZE = (224, 224)
 BATCH_SIZE = 32
-DESIRED_DATASET_SIZE = 100
+DESIRED_TRAIN_SIZE = 100
 
 
 class AutoEncoder(MlABC):
@@ -39,28 +38,33 @@ class AutoEncoder(MlABC):
         # Log the start of image processing
         self.logger.info("Processing Training Images", img_path=img_path)
 
-        # Set the image path to its parent directory
-        img_path = img_path.parent
-
-        # Define image data augmentation settings
-        datagen = ImageDataGenerator(
-            rescale=1.0 / 255,
-            rotation_range=20,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            shear_range=0.2,
-            zoom_range=0.2,
-            horizontal_flip=True,
-            fill_mode="nearest",
+        train_ds = keras.preprocessing.image_dataset_from_directory(
+            img_path,
+            labels=None,
+            image_size=TARGET_SIZE,
+            batch_size=BATCH_SIZE,
         )
 
-        # Generate augmented dataset from images in the directory
-        augmented_ds = datagen.flow_from_directory(
-            img_path,
-            target_size=TARGET_SIZE,
-            batch_size=BATCH_SIZE,
-            class_mode="input",  # Images are their own labels
-            shuffle=True,
+        img_count = len(train_ds.file_paths)
+        factor = math.ceil(DESIRED_TRAIN_SIZE / img_count)
+
+        data_augmentation = keras.Sequential(
+            [
+                keras.layers.Rescaling(1.0 / 255),
+                keras.layers.RandomRotation(0.1),
+                keras.layers.RandomTranslation(0.1, 0.1),
+                keras.layers.RandomZoom(0.1),
+                keras.layers.RandomFlip(),
+                keras.layers.Resizing(*TARGET_SIZE),
+            ]
+        )
+
+        augmented_ds = train_ds.repeat(factor).map(
+            lambda x: (
+                data_augmentation(x, training=True),
+                data_augmentation(x, training=True),
+            ),
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
 
         # Define autoencoder architecture
@@ -85,16 +89,12 @@ class AutoEncoder(MlABC):
         autoencoder = Model(input_img, decoded)
         autoencoder.compile(optimizer="adam", loss="binary_crossentropy")
 
-        # Configure training duration
-        epochs = 100
-        steps_per_epoch = 1
-
-        # Train model using augmented images
-        for _ in range(epochs):
-            for _ in range(steps_per_epoch):
-                images, _ = next(augmented_ds)
-                loss = autoencoder.train_on_batch(images, images)
-                self.logger.info("training loss", loss=loss)
+        steps_per_epoch = img_count * factor // BATCH_SIZE
+        autoencoder.fit(
+            augmented_ds,
+            epochs=10,
+            steps_per_epoch=steps_per_epoch,
+        )
 
         # Save the trained model
         self.autoencoder = autoencoder
@@ -106,7 +106,7 @@ class AutoEncoder(MlABC):
             "processed_training_images",
             session_id=self.session_id,
             model_name="auto_encoder",
-            augmented_image_count=DESIRED_DATASET_SIZE,
+            augmented_image_count=img_count * factor,
             analytics=True,
         )
 
@@ -116,14 +116,14 @@ class AutoEncoder(MlABC):
         if not self.autoencoder:
             raise ValueError("Autoencoder model not loaded")
 
-        # Create dataset from image directory for processing
-        collection_ds: tf.data.Dataset = keras.preprocessing.image_dataset_from_directory(
-            img_path,
-            labels=None,  # No labels are needed as it's for reconstruction error calculation
-            seed=123,
-            shuffle=False,
-            image_size=TARGET_SIZE,
-            batch_size=BATCH_SIZE,
+        collection_ds: tf.data.Dataset = (
+            keras.preprocessing.image_dataset_from_directory(
+                img_path,
+                labels=None,
+                shuffle=False,
+                image_size=TARGET_SIZE,
+                batch_size=BATCH_SIZE,
+            )
         )
 
         # Extract file paths from dataset for reference
@@ -133,6 +133,7 @@ class AutoEncoder(MlABC):
         data_augmentation = keras.Sequential(
             [
                 keras.layers.Rescaling(1.0 / 255),
+                keras.layers.Resizing(*TARGET_SIZE),
             ]
         )
 
@@ -141,22 +142,13 @@ class AutoEncoder(MlABC):
             data_augmentation, num_parallel_calls=tf.data.AUTOTUNE
         )
 
-        self.logger.info("Processing Collection Images", img_path=img_path)
-        reconstruction_errors = []
-        original_images = []
-        reconstructed_images = []
+        def compute_error(batch):
+            reconstructions = self.autoencoder(batch, training=False)
+            return tf.reduce_mean(tf.abs(batch - reconstructions), axis=(1, 2, 3))
 
-        # Compute reconstruction error for each batch
-        for batch in collection_ds:
-            reconstructed = self.autoencoder.predict(batch)
-            batch_errors = tf.reduce_mean(tf.abs(batch - reconstructed), axis=(1, 2, 3))
-            reconstruction_errors.extend(batch_errors)
-            original_images.extend(batch.numpy())
-            reconstructed_images.extend(reconstructed)
+        errors = collection_ds.map(compute_error, num_parallel_calls=tf.data.AUTOTUNE)
 
-        errors = np.array(reconstruction_errors)
-        originals = np.array(original_images)
-        reconstructs = np.array(reconstructed_images)
+        errors = np.concatenate(list(errors.as_numpy_iterator()))
 
         self.logger.info(
             "processed_collection_images",
