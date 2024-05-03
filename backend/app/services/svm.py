@@ -1,6 +1,5 @@
 import pickle
 from pathlib import Path
-from uuid import uuid4
 
 import numpy as np
 import structlog
@@ -12,8 +11,6 @@ from sklearn.svm import OneClassSVM
 from app.config import get_config
 from app.services.base import MlABC
 
-# log = structlog.get_logger()
-
 # Minimum number of training images required to train the SVM
 min_training_size = 100
 config = get_config()
@@ -21,9 +18,10 @@ config = get_config()
 
 class SVM(MlABC):
     def __init__(self, session_id: str, is_training: bool = True):
+        # Initialize logging
         self.logger = structlog.get_logger()
         self.session_id = session_id
-        # Load MobileNetV3 pre-trained on ImageNet without the top layer
+        # Initialize the MobileNetV3 model without the classification layer, pre-trained on ImageNet
         self.model = tf.keras.applications.MobileNetV3Large(
             weights="imagenet", include_top=False
         )
@@ -31,14 +29,16 @@ class SVM(MlABC):
         if is_training:
             self.best_svm = None
         else:
+            # Load previously trained SVM model
             with open(
                 config.SESSIONS_FOLDER / session_id / "svm" / "svm.pkl", "rb"
             ) as f:
                 self.best_svm = pickle.load(f)
 
     async def process_training_images(self, img_path):
+        # Log the start of the image processing
         self.logger.info("Processing Training Images", img_path=img_path)
-
+        # Calculate how many times to augment the dataset to ensure sufficient training size
         img_dir_size = len(list(img_path.glob("*")))
         factor = (
             (max(min_training_size, 100) + img_dir_size - 1) // img_dir_size
@@ -47,6 +47,7 @@ class SVM(MlABC):
         )
         img_list = []
 
+        # Define data augmentation parameters to increase dataset diversity
         data_augmentation = tf.keras.preprocessing.image.ImageDataGenerator(
             rotation_range=20,
             width_shift_range=0.2,
@@ -59,7 +60,7 @@ class SVM(MlABC):
 
         for path in img_path.glob("*"):
             try:
-                # Load image and preprocess it for MobileNetV3
+                # Load and preprocess images for MobileNetV3
                 img = tf.keras.preprocessing.image.load_img(
                     path, target_size=(224, 224)
                 )
@@ -67,8 +68,7 @@ class SVM(MlABC):
                 img_array = tf.keras.applications.mobilenet_v3.preprocess_input(
                     img_array
                 )
-
-                # Apply data augmentation if needed
+                # Augment images and add to list
                 for _ in range(factor - 1):
                     img_list.append(data_augmentation.random_transform(img_array))
                 img_list.append(img_array)
@@ -81,8 +81,7 @@ class SVM(MlABC):
         self.logger.info("Length of training images", length=len(img_list))
         # Ensure that img_batch has a batch dimension
         img_batch = np.stack(img_list, axis=0)
-
-        # Extract features using MobileNetV3
+        # Use the MobileNetV3 to extract features from images
         features = self.model.predict(img_batch)
         features = features.reshape((features.shape[0], -1))  # Flatten the features
 
@@ -90,28 +89,21 @@ class SVM(MlABC):
         anomaly_scorer = make_scorer(
             lambda estimator, X: -estimator.decision_function(X).ravel()
         )
-        # Perform grid search to find the best hyperparameters
-        # This will search 3*2*1 combinations of hyperparameters
+        # Set up parameters for grid search to optimize SVM
         params_grid = {
             "nu": [0.01, 0.05, 0.1, 0.5],
             "gamma": ["scale", "auto"],
             "kernel": ["rbf"],
         }
-
         clf = GridSearchCV(
-            svm,
-            param_grid=params_grid,
-            scoring=anomaly_scorer,
-            cv=5, # 5-fold cross-validation
-            n_jobs=-1,
+            svm, param_grid=params_grid, scoring=anomaly_scorer, cv=5, n_jobs=-1
         )
         clf.fit(features)
         self.best_svm = clf.best_estimator_
 
-        # Save the best SVM model
+        # Save the trained SVM model
         path = config.SESSIONS_FOLDER / self.session_id / "svm"
         path.mkdir(parents=True, exist_ok=True)
-
         with open(path / "svm.pkl", "wb") as f:
             pickle.dump(self.best_svm, f)
 
@@ -126,17 +118,17 @@ class SVM(MlABC):
         return Path("/", self.session_id) / "svm" / "svm.pkl"
 
     async def process_collection_images(self, img_path):
-        # Convert single image path to a directory-like object for compatibility
+        # Log the start of processing collection images
         self.logger.info("Processing Collection Images", img_path=img_path)
-
+        # Ensure SVM model is loaded
         if not self.best_svm:
             raise ValueError("SVM model not loaded")
 
-        img_paths: list[Path] = []
+        img_paths = []
         img_list = []
         for path in img_path.glob("*"):
             try:
-                # Load image and preprocess it for MobileNetV3
+                # Load and preprocess images
                 img = tf.keras.preprocessing.image.load_img(
                     path, target_size=(224, 224)
                 )
@@ -144,7 +136,6 @@ class SVM(MlABC):
                 img_array = tf.keras.applications.mobilenet_v3.preprocess_input(
                     img_array
                 )
-
                 img_paths.append(path)
                 img_list.append(img_array)
             except Exception as e:
@@ -153,14 +144,10 @@ class SVM(MlABC):
         # Ensure that img_batch has a batch dimension
         img_batch = np.stack(img_list, axis=0) if img_list else np.array([])
         self.logger.info("Length of collection images", length=len(img_list))
-
         # Extract features using MobileNetV3
         features = self.model.predict(img_batch)
         features = features.reshape((features.shape[0], -1))  # Flatten the features
-
-        # img_paths, new_features = self.extract_features(img_dir)
         scores = self.best_svm.decision_function(features)
-
         img_paths = [p.name for p in img_paths]
 
         self.logger.info(
