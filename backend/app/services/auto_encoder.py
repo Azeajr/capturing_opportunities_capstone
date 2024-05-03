@@ -1,5 +1,6 @@
 import math
 from pathlib import Path
+
 import keras
 import numpy as np
 import structlog
@@ -12,6 +13,7 @@ from app.services.base import MlABC
 # Retrieve application configuration
 config = get_config()
 
+# Define target image size and batch processing parameters
 TARGET_SIZE = (224, 224)
 BATCH_SIZE = 32
 DESIRED_TRAIN_SIZE = 100
@@ -19,11 +21,11 @@ DESIRED_TRAIN_SIZE = 100
 
 class AutoEncoder(MlABC):
     def __init__(self, session_id: str, is_training: bool = True):
-        # Initialize logger
+        # Initialize the logger for event tracking
         self.logger = structlog.get_logger()
         self.session_id = session_id
 
-        # Load pre-trained autoencoder model if not training
+        # Conditionally load an existing pre-trained autoencoder
         if is_training:
             self.autoencoder = None
         else:
@@ -35,9 +37,10 @@ class AutoEncoder(MlABC):
             )
 
     async def process_training_images(self, img_path):
-        # Log the start of image processing
+        # Log the initiation of training image processing
         self.logger.info("Processing Training Images", img_path=img_path)
 
+        # Create a dataset from the directory containing training images
         train_ds = keras.preprocessing.image_dataset_from_directory(
             img_path,
             labels=None,
@@ -45,9 +48,11 @@ class AutoEncoder(MlABC):
             batch_size=BATCH_SIZE,
         )
 
+        # Calculate how much data augmentation is needed to reach desired dataset size
         img_count = len(train_ds.file_paths)
         factor = math.ceil(DESIRED_TRAIN_SIZE / img_count)
 
+        # Define data augmentation strategies to increase dataset size
         data_augmentation = keras.Sequential(
             [
                 keras.layers.Rescaling(1.0 / 255),
@@ -59,6 +64,7 @@ class AutoEncoder(MlABC):
             ]
         )
 
+        # Augment dataset by repeating and applying transformations
         augmented_ds = train_ds.repeat(factor).map(
             lambda x: (
                 data_augmentation(x, training=True),
@@ -67,8 +73,8 @@ class AutoEncoder(MlABC):
             num_parallel_calls=tf.data.AUTOTUNE,
         )
 
-        # Define autoencoder architecture
-        input_img = keras.layers.Input(shape=(224, 224, 3))  # Input layer
+        # Define the architecture of the autoencoder
+        input_img = keras.layers.Input(shape=(224, 224, 3))
         x = keras.layers.Conv2D(32, (3, 3), activation="relu", padding="same")(
             input_img
         )
@@ -76,7 +82,6 @@ class AutoEncoder(MlABC):
         x = keras.layers.Conv2D(16, (3, 3), activation="relu", padding="same")(x)
         encoded = keras.layers.MaxPooling2D((2, 2), padding="same")(x)
 
-        # Decoding architecture
         x = keras.layers.Conv2D(16, (3, 3), activation="relu", padding="same")(encoded)
         x = keras.layers.UpSampling2D((2, 2))(x)
         x = keras.layers.Conv2D(32, (3, 3), activation="relu", padding="same")(x)
@@ -85,10 +90,10 @@ class AutoEncoder(MlABC):
             x
         )
 
-        # Complete model setup
         autoencoder = Model(input_img, decoded)
         autoencoder.compile(optimizer="adam", loss="binary_crossentropy")
 
+        # Fit the model to the augmented dataset
         steps_per_epoch = img_count * factor // BATCH_SIZE
         autoencoder.fit(
             augmented_ds,
@@ -98,7 +103,7 @@ class AutoEncoder(MlABC):
             steps_per_epoch=1,
         )
 
-        # Save the trained model
+        # Save the trained model and log the process
         self.autoencoder = autoencoder
         path = config.SESSIONS_FOLDER / self.session_id / "auto_encoder"
         path.mkdir(parents=True, exist_ok=True)
@@ -118,20 +123,19 @@ class AutoEncoder(MlABC):
         if not self.autoencoder:
             raise ValueError("Autoencoder model not loaded")
 
-        collection_ds: tf.data.Dataset = (
-            keras.preprocessing.image_dataset_from_directory(
-                img_path,
-                labels=None,
-                shuffle=False,
-                image_size=TARGET_SIZE,
-                batch_size=BATCH_SIZE,
-            )
+        # Load images from the collection directory into a dataset
+        collection_ds = keras.preprocessing.image_dataset_from_directory(
+            img_path,
+            labels=None,
+            shuffle=False,
+            image_size=TARGET_SIZE,
+            batch_size=BATCH_SIZE,
         )
 
-        # Extract file paths from dataset for reference
+        # Extract file paths for later reference
         file_paths = [Path(path).name for path in collection_ds.file_paths]
 
-        # Data preprocessing to normalize images
+        # Define data preprocessing for normalization and resizing
         data_augmentation = keras.Sequential(
             [
                 keras.layers.Rescaling(1.0 / 255),
@@ -139,19 +143,21 @@ class AutoEncoder(MlABC):
             ]
         )
 
-        # Apply preprocessing to dataset
+        # Apply preprocessing to the dataset
         collection_ds = collection_ds.map(
             data_augmentation, num_parallel_calls=tf.data.AUTOTUNE
         )
 
+        # Define a function to compute reconstruction error
         def compute_error(batch):
             reconstructions = self.autoencoder(batch, training=False)
             return tf.reduce_mean(tf.abs(batch - reconstructions), axis=(1, 2, 3))
 
+        # Compute errors for all images in the collection
         errors = collection_ds.map(compute_error, num_parallel_calls=tf.data.AUTOTUNE)
-
         errors = np.concatenate(list(errors.as_numpy_iterator()))
 
+        # Log and return processing results
         self.logger.info(
             "processed_collection_images",
             session_id=self.session_id,
