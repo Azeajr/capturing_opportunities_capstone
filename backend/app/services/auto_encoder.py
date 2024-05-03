@@ -92,8 +92,10 @@ class AutoEncoder(MlABC):
         steps_per_epoch = img_count * factor // BATCH_SIZE
         autoencoder.fit(
             augmented_ds,
-            epochs=10,
-            steps_per_epoch=steps_per_epoch,
+            # epochs=10,
+            # steps_per_epoch=steps_per_epoch,
+            epochs=img_count * factor,
+            steps_per_epoch=1,
         )
 
         # Save the trained model

@@ -56,10 +56,10 @@ class SVM(MlABC):
         data_augmentation = keras.Sequential(
             [
                 keras.layers.Rescaling(1.0 / 255),
-                keras.layers.RandomRotation(0.1),
-                keras.layers.RandomTranslation(0.1, 0.1),
-                keras.layers.RandomZoom(0.1),
-                keras.layers.RandomFlip(),
+                keras.layers.RandomRotation(0.2),
+                keras.layers.RandomTranslation(0.2, 0.2),
+                keras.layers.RandomZoom(0.2),
+                keras.layers.RandomFlip("horizontal"),
                 keras.layers.Resizing(*TARGET_SIZE),
             ]
         )
