@@ -67,8 +67,10 @@ class AutoEncoder(MlABC):
         # Augment dataset by repeating and applying transformations
         augmented_ds = train_ds.repeat(factor).map(
             lambda x: (
-                data_augmentation(x, training=True),
-                data_augmentation(x, training=True),
+                (
+                    augmented := data_augmentation(x, training=True)
+                ),  # This may need be saved to a variable and used in the next line
+                augmented,
             ),
             num_parallel_calls=tf.data.AUTOTUNE,
         )

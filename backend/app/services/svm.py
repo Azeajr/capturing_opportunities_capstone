@@ -19,7 +19,7 @@ config = get_config()
 # Define target image size and batch processing parameters
 TARGET_SIZE = (224, 224)
 BATCH_SIZE = 32
-DESIRED_TRAIN_SIZE = 300
+DESIRED_TRAIN_SIZE = 100
 
 
 class SVM(MlABC):
@@ -72,8 +72,10 @@ class SVM(MlABC):
         # Apply transformations and repeat the dataset to augment data
         augmented_ds = train_ds.repeat(factor).map(
             lambda x: (
-                data_augmentation(x, training=True),
-                data_augmentation(x, training=True),
+                (
+                    augmented := data_augmentation(x, training=True)
+                ),  # This may need be saved to a variable and used in the next line
+                augmented,
             ),
             num_parallel_calls=tf.data.AUTOTUNE,
         )
